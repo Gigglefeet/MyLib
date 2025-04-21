@@ -1,1 +1,1 @@
-# MyLib
+# MyLib is a book saving app that is for avid book readers that want to keep a solid count for all the books they read, and for the books they will be reading in the future. 
