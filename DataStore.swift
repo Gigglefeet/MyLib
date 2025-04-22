@@ -14,10 +14,17 @@ class DataStore: ObservableObject {
             saveData()
         }
     }
+    // Add new list for books being currently read
+    @Published var inTheHangar: [Book] = [] {
+        didSet {
+            saveData()
+        }
+    }
 
     // UserDefaults keys remain private here
     private let wishlistKey = "holocronWishlist"
     private let archivesKey = "jediArchives"
+    private let hangarKey = "inTheHangar" // New key for the hangar list
 
     // Initializer to load data when the store is created
     init() {
@@ -42,6 +49,14 @@ class DataStore: ObservableObject {
             UserDefaults.standard.set(encodedArchives, forKey: archivesKey)
         } catch {
             print("ERROR DataStore saveData: Failed to encode/save archives. Error: \(error.localizedDescription)")
+        }
+
+        // Save Hangar list with error handling
+        do {
+            let encodedHangar = try encoder.encode(inTheHangar)
+            UserDefaults.standard.set(encodedHangar, forKey: hangarKey)
+        } catch {
+             print("ERROR DataStore saveData: Failed to encode/save hangar list. Error: \(error.localizedDescription)")
         }
     }
 
@@ -72,6 +87,19 @@ class DataStore: ObservableObject {
              }
         } else {
             self.jediArchives = [] // Ensure it's initialized
+        }
+
+        // Load Hangar list with error handling
+        if let savedHangar = UserDefaults.standard.data(forKey: hangarKey) {
+             do {
+                 let decodedHangar = try decoder.decode([Book].self, from: savedHangar)
+                 self.inTheHangar = decodedHangar
+             } catch {
+                 print("ERROR DataStore loadData: Failed to decode hangar list. Error: \(error.localizedDescription)")
+                 self.inTheHangar = [] // Reset on failure
+             }
+        } else {
+            self.inTheHangar = [] // Ensure it's initialized
         }
     }
 } 

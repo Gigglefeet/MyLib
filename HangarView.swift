@@ -1,0 +1,279 @@
+import SwiftUI
+
+struct HangarView: View {
+    @Binding var inTheHangar: [Book]
+    // Actions from ContentView
+    var moveFromHangarToArchives: (Book) -> Void
+    var setHangarRating: (Book, Int) -> Void
+    var reorderHangar: (IndexSet, Int) -> Void
+    var moveToHangarFromWishlist: (Book) -> Void // Action to move book *to* hangar
+
+    // Binding for wishlist selection modal
+    @Binding var wishlist: [Book] // Need the wishlist to show in the modal
+
+    // State for modal presentation
+    @State private var showingSelectWishlistSheet = false
+    // State for edit sheet presentation
+    @State private var bookToEdit: Book?
+    
+    // AppStorage for persistent sort order
+    @AppStorage("hangarSortOrder") private var sortOrder: HangarSortOrder = .defaultOrder
+
+    // Filtered wishlist (non-empty titles/authors) for the selection sheet
+    private var selectableWishlist: [Book] {
+        wishlist.filter { !$0.title.isEmpty && !$0.author.isEmpty }
+    }
+    
+    // Computed property for sorted list
+    private var sortedHangar: [Book] {
+        switch sortOrder {
+        case .defaultOrder:
+            return inTheHangar // Return original order
+        case .titleAscending:
+            return inTheHangar.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case .titleDescending:
+            return inTheHangar.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedDescending }
+        case .ratingAscending:
+            // Sort by rating low-to-high, then title ascending for ties
+            return inTheHangar.sorted { 
+                if $0.rating != $1.rating {
+                    return $0.rating < $1.rating
+                } else {
+                    return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                }
+            }
+        case .ratingDescending:
+            // Sort by rating high-to-low, then title ascending for ties
+            return inTheHangar.sorted { 
+                if $0.rating != $1.rating {
+                    return $0.rating > $1.rating
+                } else {
+                    return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                }
+            }
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            // Check if the hangar list is empty
+            if inTheHangar.isEmpty && !showingSelectWishlistSheet { // Avoid flicker when sheet shows
+                EmptyHangarView(
+                    showingSelectWishlistSheet: $showingSelectWishlistSheet,
+                    selectableWishlist: selectableWishlist
+                )
+            } else {
+                PopulatedHangarView(
+                    sortedHangar: sortedHangar,
+                    moveFromHangarToArchives: moveFromHangarToArchives,
+                    setHangarRating: setHangarRating,
+                    bookToEdit: $bookToEdit,
+                    sortOrder: $sortOrder,
+                    reorderHangar: reorderHangar,
+                    deleteFromHangar: deleteFromHangar,
+                    showingSelectWishlistSheet: $showingSelectWishlistSheet,
+                    selectableWishlist: selectableWishlist
+                )
+            }
+        }
+        // Apply sheets and theme to the container view (remains outside)
+        .sheet(isPresented: $showingSelectWishlistSheet) {
+           // Simple Wishlist Selection Sheet
+           NavigationView { // Embed in NavView for title/button
+                List {
+                    ForEach(selectableWishlist) { book in
+                        Button {
+                            // Move selected book and dismiss
+                            moveToHangarFromWishlist(book)
+                            showingSelectWishlistSheet = false
+                        } label: {
+                            VStack(alignment: .leading) {
+                                Text(book.title).foregroundColor(.primary) // Ensure text is visible
+                                Text(book.author).font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Select from Wishlist")
+                .navigationBarItems(leading: Button("Cancel") { showingSelectWishlistSheet = false })
+                .environment(\.colorScheme, .dark) // Match theme
+            }
+        }
+        .sheet(item: $bookToEdit) { book in // Sheet for editing
+            // Find the index in the *hangar* binding array
+            if let index = inTheHangar.firstIndex(where: { $0.id == book.id }) {
+                EditBookView(book: $inTheHangar[index]) // Pass binding
+                    .environment(\.colorScheme, .dark)
+            } else {
+                Text("Error: Could not find book to edit in hangar list.")
+                    .foregroundColor(.red).padding()
+            }
+        }
+        .environment(\.colorScheme, .dark) // Apply dark theme
+    }
+    
+    // Delete function needs to operate on the original list binding
+    private func deleteFromHangar(at offsets: IndexSet) {
+        // Get the IDs of the books to delete based on the *sorted* list's offsets
+        let idsToDelete = offsets.map { sortedHangar[$0].id }
+        
+        // Remove items from the *original* list based on ID
+        inTheHangar.removeAll { idsToDelete.contains($0.id) }
+    }
+}
+
+// MARK: - Helper Views
+struct EmptyHangarView: View {
+    @Binding var showingSelectWishlistSheet: Bool
+    let selectableWishlist: [Book]
+    
+    var body: some View {
+        VStack {
+            Spacer()
+            Image(systemName: "airplane.circle.fill") // Placeholder Icon
+                .font(.largeTitle)
+                .foregroundColor(.gray)
+                .padding(.bottom, 5)
+            Text("Hangar is empty.")
+                .font(.headline)
+                .foregroundColor(.gray)
+            Text("Add books currently being read from the Wishlist or Archives.")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .scrollContentBackground(.hidden)
+        .navigationTitle("In The Hangar")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingSelectWishlistSheet = true
+                } label: {
+                    Label("Add Book", systemImage: "plus.circle.fill")
+                }
+                .disabled(selectableWishlist.isEmpty)
+            }
+        }
+    }
+}
+
+struct PopulatedHangarView: View {
+    let sortedHangar: [Book]
+    var moveFromHangarToArchives: (Book) -> Void
+    var setHangarRating: (Book, Int) -> Void
+    @Binding var bookToEdit: Book?
+    @Binding var sortOrder: HangarSortOrder
+    var reorderHangar: (IndexSet, Int) -> Void
+    var deleteFromHangar: (IndexSet) -> Void
+    @Binding var showingSelectWishlistSheet: Bool
+    let selectableWishlist: [Book]
+    
+    var body: some View {
+        List {
+            ForEach(sortedHangar) { book in
+                HangarBookRowView(
+                    book: book,
+                    moveFromHangarToArchives: moveFromHangarToArchives,
+                    setHangarRating: setHangarRating,
+                    bookToEdit: $bookToEdit
+                )
+            }
+            .onMove(perform: sortOrder == .defaultOrder ? reorderHangar : nil)
+            .onDelete(perform: deleteFromHangar)
+        }
+        .environment(\.editMode, .constant(sortOrder == .defaultOrder ? .active : .inactive))
+        .scrollContentBackground(.hidden)
+        .navigationTitle("In The Hangar")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                if sortOrder == .defaultOrder {
+                    EditButton()
+                }
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Picker("Sort Order", selection: $sortOrder) {
+                        ForEach(HangarSortOrder.allCases) { order in
+                            Text(order.rawValue).tag(order)
+                        }
+                    }
+                } label: {
+                    Label("Sort", systemImage: "arrow.up.arrow.down.circle")
+                }
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingSelectWishlistSheet = true
+                } label: {
+                    Label("Add Book", systemImage: "plus.circle.fill")
+                }
+                .disabled(selectableWishlist.isEmpty)
+            }
+        }
+    }
+}
+
+// Basic Preview - Requires significant setup due to bindings and actions
+#Preview {
+    // Need a wrapper view to manage state for the preview
+    struct HangarPreviewWrapper: View {
+        @State private var previewHangar: [Book] = [
+            Book(title: "Hangar Book 1", author: "Author H1", rating: 4),
+            Book(title: "Hangar Book 2", author: "Author H2", rating: 0),
+            Book(title: "Hangar Book 3", author: "Author H3", rating: 5, notes: "Long note preview...")
+        ]
+        @State private var previewWishlist: [Book] = [
+             Book(title: "Wishlist Book 1", author: "Author W1"),
+             Book(title: "Wishlist Book 2", author: "Author W2")
+        ]
+        @State private var previewArchives: [Book] = [] // For move action target
+
+        func previewMoveToArchives(book: Book) {
+            if let index = previewHangar.firstIndex(where: { $0.id == book.id }) {
+                let movedBook = previewHangar.remove(at: index)
+                previewArchives.append(movedBook)
+                print("PREVIEW: Moved '\(movedBook.title)' to Archives")
+            }
+        }
+
+        func previewSetRating(book: Book, rating: Int) {
+            if let index = previewHangar.firstIndex(where: { $0.id == book.id }) {
+                 let validatedRating = max(0, min(5, rating))
+                previewHangar[index].rating = validatedRating
+                print("PREVIEW: Set rating for '\(previewHangar[index].title)' to \(validatedRating)")
+            }
+        }
+
+        func previewReorder(from source: IndexSet, to destination: Int) {
+             previewHangar.move(fromOffsets: source, toOffset: destination)
+             print("PREVIEW: Reordered hangar list")
+        }
+
+        func previewMoveToHangar(book: Book) {
+            if let index = previewWishlist.firstIndex(where: {$0.id == book.id}) {
+                let movedBook = previewWishlist.remove(at: index)
+                previewHangar.append(movedBook)
+                print("PREVIEW: Moved '\(movedBook.title)' from Wishlist to Hangar")
+            }
+        }
+
+        var body: some View {
+            NavigationView {
+                HangarView(
+                    inTheHangar: $previewHangar,
+                    moveFromHangarToArchives: previewMoveToArchives,
+                    setHangarRating: previewSetRating,
+                    reorderHangar: previewReorder,
+                    moveToHangarFromWishlist: previewMoveToHangar, // Moved before wishlist
+                    wishlist: $previewWishlist
+                )
+            }
+            .environment(\.colorScheme, .dark)
+        }
+    }
+
+    return HangarPreviewWrapper()
+} 

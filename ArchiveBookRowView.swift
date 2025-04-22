@@ -5,7 +5,8 @@ struct ArchiveBookRowView: View {
     let book: Book
     // Actions passed down
     var setRatingAction: (Book, Int) -> Void
-    var markAsUnreadAction: (Book) -> Void
+    var markAsUnreadAction: (Book) -> Void // Moves to Wishlist
+    var moveToHangarAction: (Book) -> Void // New: Moves to Hangar
     // Binding to control the edit sheet presentation in the parent
     @Binding var bookToEdit: Book?
 
@@ -42,16 +43,25 @@ struct ArchiveBookRowView: View {
                 }
             }
         } // End of Row HStack
-        .padding(.bottom, 4) // Add padding for visual separation
+        .padding(.vertical, 4) // Consistent padding
         .contentShape(Rectangle()) // Ensure entire area is tappable
         .onTapGesture { // Tap row to edit
             self.bookToEdit = book
         }
         .listRowBackground(Color.clear) // Keep row transparent
-        // Add Swipe Action for moving back to wishlist
+        // Swipe Action: Move to Hangar - Leading Edge (Swipe Right)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+             Button {
+                 moveToHangarAction(book)
+             } label: {
+                 Label("Read Again", systemImage: "airplane.circle.fill") // Placeholder
+             }
+             .tint(.cyan) // Match Wishlist hangar action color
+        }
+        // Swipe Action: Move back to Wishlist - Trailing Edge (Swipe Left) - Keep existing
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button { // Removed 'role: .normal'
-                markAsUnreadAction(book)
+            Button {
+                markAsUnreadAction(book) // This action moves to Wishlist
             } label: {
                 Label("Move to Wishlist", systemImage: "arrow.uturn.backward.circle.fill")
             }
@@ -60,33 +70,41 @@ struct ArchiveBookRowView: View {
     }
 }
 
-// Optional: Basic Preview for the Row itself
+// Preview for the Row - Needs update for new action
 #Preview {
-    // Need a wrapper to provide state/bindings for preview
     struct RowPreviewWrapper: View {
-        // Use @State for mutable preview data
-        @State var sampleBook = Book(title: "Preview Book", author: "Author P", rating: 3)
+        @State var sampleBook = Book(title: "Archive Preview", author: "Author Arc", rating: 3, notes: "Archive notes.")
         @State var editingBook: Book? = nil
+
+        func previewSetRating(book: Book, rating: Int) {
+            let validatedRating = max(0, min(5, rating))
+            sampleBook.rating = validatedRating
+             print("PREVIEW ROW ARCHIVE: Set rating for '\(book.title)' to \(validatedRating)")
+        }
+        func previewMarkUnread(book: Book) { print("PREVIEW ROW ARCHIVE: Move '\(book.title)' to Wishlist") }
+        func previewMoveToHangar(book: Book) { print("PREVIEW ROW ARCHIVE: Move '\(book.title)' to Hangar") }
+
 
         var body: some View {
             List { // Embed in List for context
                 ArchiveBookRowView(
                     book: sampleBook,
-                    setRatingAction: { book, rating in
-                        // Simulate update for preview state
-                        if let b = sampleBook as Book?, b.id == book.id {
-                           sampleBook.rating = rating
-                        }
-                    },
-                    markAsUnreadAction: { book in
-                    },
+                    setRatingAction: previewSetRating,
+                    markAsUnreadAction: previewMarkUnread,
+                    moveToHangarAction: previewMoveToHangar, // Pass new action
                     bookToEdit: $editingBook // Pass the binding
+                )
+                 ArchiveBookRowView(
+                    book: Book(title: "Another Archive", author: "Other Author", rating: 5),
+                    setRatingAction: previewSetRating,
+                    markAsUnreadAction: previewMarkUnread,
+                    moveToHangarAction: previewMoveToHangar,
+                    bookToEdit: $editingBook
                 )
             }
             .environment(\.colorScheme, .dark)
-            // Add a sheet to the wrapper for testing the row's tap gesture
             .sheet(item: $editingBook) { bookToEdit in
-                 Text("Editing \(bookToEdit.title) in Preview")
+                 Text("Editing '\(bookToEdit.title)' in Archive Preview")
                      .padding()
             }
         }

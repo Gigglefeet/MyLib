@@ -19,3 +19,14 @@ enum ArchivesSortOrder: String, CaseIterable, Identifiable {
 
     var id: String { self.rawValue }
 }
+
+// Enum for Hangar Sorting Options
+enum HangarSortOrder: String, CaseIterable, Identifiable {
+    case defaultOrder = "Added Order" // Default maintains manual reordering
+    case titleAscending = "Title (A-Z)"
+    case titleDescending = "Title (Z-A)"
+    case ratingAscending = "Rating (Low-High)"
+    case ratingDescending = "Rating (High-Low)"
+    
+    var id: String { self.rawValue }
+}

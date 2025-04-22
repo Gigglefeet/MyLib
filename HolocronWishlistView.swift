@@ -3,6 +3,7 @@ import SwiftUI
 struct HolocronWishlistView: View {
     @Binding var holocronWishlist: [Book]
     var markAsReadAction: (Book) -> Void
+    var moveToHangarAction: (Book) -> Void
     @State private var bookToEdit: Book?
     
     // AppStorage for persistent sort order
@@ -53,6 +54,7 @@ struct HolocronWishlistView: View {
                     WishlistBookRowView(
                         book: book,
                         markAsReadAction: markAsReadAction,
+                        moveToHangarAction: moveToHangarAction,
                         bookToEdit: $bookToEdit // Pass binding for tap-to-edit
                     )
                 }
@@ -113,34 +115,29 @@ struct HolocronWishlistView: View {
     }
 }
 
-// Simplified Preview - Needs update to work well with AppStorage
+// Preview - Needs update for new action
 #Preview {
-    // Previewing with AppStorage can be tricky.
-    // It might always show default sort or require specific setup.
-    // We'll keep it simple for now.
-    
-    // Need a state variable wrapper for the preview binding
     struct PreviewWrapper: View {
         @State var sampleBooks = [
             Book(title: "B Book", author: "Author P1"),
             Book(title: "A Book", author: "Author P2"),
             Book(title: "C Book", author: "Author P3")
         ]
-        
+
+        func previewMarkRead(book: Book) { print("PREVIEW: Mark Read '\(book.title)'") }
+        func previewMoveToHangar(book: Book) { print("PREVIEW: Move '\(book.title)' to Hangar") }
+
+
         var body: some View {
             NavigationView {
                 HolocronWishlistView(
                     holocronWishlist: $sampleBooks,
-                    markAsReadAction: { _ in /* print("Preview MarkRead") */ } // Removed print
+                    markAsReadAction: previewMarkRead,
+                    moveToHangarAction: previewMoveToHangar // Provide preview action
                 )
                 .environment(\.colorScheme, .dark)
-                .navigationTitle("Preview Title")
             }
         }
     }
-    
-    // Clear AppStorage for preview consistency if needed (use cautiously)
-    // UserDefaults.standard.removeObject(forKey: "wishlistSortOrder")
-    
     return PreviewWrapper()
 }

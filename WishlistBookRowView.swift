@@ -3,6 +3,7 @@ import SwiftUI
 struct WishlistBookRowView: View {
     let book: Book
     var markAsReadAction: (Book) -> Void
+    var moveToHangarAction: (Book) -> Void // New action
     @Binding var bookToEdit: Book? // For tapping to edit
 
     var body: some View {
@@ -39,30 +40,48 @@ struct WishlistBookRowView: View {
             self.bookToEdit = book
         }
         .listRowBackground(Color.clear)
-        .swipeActions(edge: .leading, allowsFullSwipe: false) { // Mark Read swipe
+        .swipeActions(edge: .leading, allowsFullSwipe: false) { // Mark Read swipe (Keep on leading)
             Button { markAsReadAction(book) } label: { Label("Mark Read", systemImage: "checkmark.circle.fill") }.tint(.green)
         }
-        // We'll add the Divider here in the next phase
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) { // Add Hangar action to trailing edge
+             Button {
+                 moveToHangarAction(book)
+             } label: {
+                 // Using the placeholder icon for now
+                 Label("Start Reading", systemImage: "airplane.circle.fill")
+             }
+             .tint(.cyan) // Use a distinct color
+        }
     }
 }
 
-// Basic Preview for the Row
+// Basic Preview for the Row - Needs update for new action
 #Preview {
     struct RowPreviewWrapper: View {
-        @State var sampleBook = Book(title: "Wishlist Book", author: "Author W")
+        @State var sampleBook = Book(title: "Wishlist Book", author: "Author W", rating: 2, notes: "Some notes") // Added rating/notes
         @State var editingBook: Book? = nil
+
+        func previewMarkRead(book: Book) { print("PREVIEW ROW: Mark Read '\(book.title)'") }
+        func previewMoveToHangar(book: Book) { print("PREVIEW ROW: Move '\(book.title)' to Hangar") }
 
         var body: some View {
             List {
                 WishlistBookRowView(
                     book: sampleBook,
-                    markAsReadAction: { book in /* print("Preview Row: Mark read \(book.title)") */ },
+                    markAsReadAction: previewMarkRead,
+                    moveToHangarAction: previewMoveToHangar, // Provide preview action
+                    bookToEdit: $editingBook
+                )
+                 WishlistBookRowView(
+                    book: Book(title: "Another Wishlist", author: "Author X"),
+                    markAsReadAction: previewMarkRead,
+                     moveToHangarAction: previewMoveToHangar,
                     bookToEdit: $editingBook
                 )
             }
             .environment(\.colorScheme, .dark)
             .sheet(item: $editingBook) { bookToEdit in
-                 Text("Editing \(bookToEdit.title) in Preview")
+                 Text("Editing '\(bookToEdit.title)' in Preview")
                      .padding()
             }
         }

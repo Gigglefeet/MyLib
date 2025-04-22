@@ -6,6 +6,7 @@ struct JediArchivesView: View {
     var setRatingAction: (Book, Int) -> Void
     // Action to move book back to wishlist (passed from ContentView)
     var markAsUnreadAction: (Book) -> Void
+    var moveToHangarAction: (Book) -> Void
     
     // AppStorage for persistent sort order
     @AppStorage("archivesSortOrder") private var sortOrder: ArchivesSortOrder = .defaultOrder
@@ -56,7 +57,7 @@ struct JediArchivesView: View {
                 Text("Empire-Archives are empty.")
                     .font(.headline)
                     .foregroundColor(.gray)
-                Text("Mark books as read from the Wishlist to add them here.")
+                Text("Mark books as read from the Wishlist or finish reading from the Hangar to add them here.")
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
@@ -74,6 +75,7 @@ struct JediArchivesView: View {
                         book: book,
                         setRatingAction: setRatingAction,
                         markAsUnreadAction: markAsUnreadAction,
+                        moveToHangarAction: moveToHangarAction,
                         bookToEdit: $bookToEdit // Pass the binding for sheet presentation
                     )
                 }
@@ -132,26 +134,34 @@ struct JediArchivesView: View {
     // Previewing with AppStorage can be tricky.
     struct PreviewWrapper: View {
          @State var previewList = [
-            Book(title: "B Book", author: "Author C", rating: 3),
-            Book(title: "A Book", author: "Author D", rating: 5),
-            Book(title: "C Book", author: "Author E", rating: 1)
+            Book(title: "B Book Archive", author: "Author C", rating: 3),
+            Book(title: "A Book Archive", author: "Author D", rating: 5),
+            Book(title: "C Book Archive", author: "Author E", rating: 1, notes: "Archived notes")
         ]
+
+        func previewSetRating(book: Book, newRating: Int) {
+            if let index = previewList.firstIndex(where: { $0.id == book.id }) {
+                previewList[index].rating = max(0, min(5, newRating))
+                 print("PREVIEW: Set rating for '\(previewList[index].title)' to \(previewList[index].rating)")
+            }
+        }
+        func previewMarkUnread(book: Book) {
+            previewList.removeAll(where: { $0.id == book.id })
+            print("PREVIEW: Moved '\(book.title)' to Wishlist (Simulated)")
+        }
+         func previewMoveToHangar(book: Book) {
+            previewList.removeAll(where: { $0.id == book.id })
+            print("PREVIEW: Moved '\(book.title)' to Hangar (Simulated)")
+         }
 
         var body: some View {
             NavigationView {
                 // Provide the binding and dummy actions for the preview
                 JediArchivesView(
                     jediArchives: $previewList, 
-                    setRatingAction: { book, newRating in
-                        // Simulate the rating set logic within the preview
-                        if let index = previewList.firstIndex(where: { $0.id == book.id }) {
-                            previewList[index].rating = newRating
-                        }
-                    },
-                    markAsUnreadAction: { book in 
-                        // Simulate move back logic
-                        previewList.removeAll(where: { $0.id == book.id })
-                    }
+                    setRatingAction: previewSetRating,
+                    markAsUnreadAction: previewMarkUnread,
+                    moveToHangarAction: previewMoveToHangar
                 )
                  .environment(\.colorScheme, .dark)
             }

@@ -12,47 +12,82 @@ struct ContentView: View {
             VStack { // Main content VStack with starfield background
                 Spacer()
 
-                // Navigation Link for Wishlist
+                // Top Row: Wishlist and Archives side-by-side
+                HStack {
+                    Spacer() // Center the HStack contents
+
+                    // Navigation Link for Wishlist
+                    NavigationLink {
+                         HolocronWishlistView(
+                             holocronWishlist: $dataStore.holocronWishlist, // Use DataStore
+                             markAsReadAction: markAsRead,
+                             moveToHangarAction: moveToHangarFromWishlist // Pass new action
+                         )
+                    } label: { // Rebel Logo + Text Label
+                        VStack {
+                            Image("rebel_logo")
+                                .resizable().aspectRatio(contentMode: .fit).frame(width: 100, height: 100)
+                            Text("Jedi-Wishlist")
+                                 .font(.footnote).fontWeight(.bold).foregroundColor(.white)
+                                 .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
+                        }
+                        .padding()
+                    }
+
+                    Spacer() // Add space between the two top buttons
+
+                    // Navigation Link for Archives
+                    NavigationLink {
+                        JediArchivesView(
+                            jediArchives: $dataStore.jediArchives, // Use DataStore
+                            setRatingAction: setRating,
+                            markAsUnreadAction: markAsUnread, // Keep existing action
+                            moveToHangarAction: moveToHangarFromArchives // Pass new action
+                        )
+                    } label: { // Empire Logo + Text Label
+                         VStack {
+                            Image("empire_logo")
+                                .resizable().aspectRatio(contentMode: .fit).frame(width: 100, height: 100)
+                            Text("Empire-Archives")
+                                 .font(.footnote).fontWeight(.bold).foregroundColor(.white)
+                                 .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
+                        }
+                         .padding()
+                    }
+
+                    Spacer() // Center the HStack contents
+                } // End of Top HStack
+
+                Spacer() // Push Hangar button down
+
+                // Middle Row: Hangar button
                 NavigationLink {
-                     HolocronWishlistView(
-                         holocronWishlist: $dataStore.holocronWishlist, // Use DataStore
-                         markAsReadAction: markAsRead
+                    // Destination will be HangarView (created in Phase 4)
+                    // Pass all required bindings and actions
+                     HangarView(
+                         inTheHangar: $dataStore.inTheHangar,
+                         moveFromHangarToArchives: moveFromHangarToArchives,
+                         setHangarRating: setHangarRating,
+                         reorderHangar: reorderHangar,
+                         wishlist: $dataStore.holocronWishlist, // Pass wishlist for adding
+                         moveToHangarFromWishlist: moveToHangarFromWishlist // Pass add action
                      )
-                } label: { // Rebel Logo + Text Label
+                } label: {
                     VStack {
-                        Image("rebel_logo")
-                            .resizable().aspectRatio(contentMode: .fit).frame(width: 100, height: 100)
-                        Text("Jedi-Wishlist")
-                             .font(.footnote).fontWeight(.bold).foregroundColor(.white)
-                             .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
+                        // Placeholder for Millennium Falcon
+                        Image(systemName: "airplane.circle.fill") // Placeholder Icon
+                             .resizable().aspectRatio(contentMode: .fit).frame(width: 100, height: 100)
+                             .foregroundColor(.cyan) // Give it some color
+                        Text("In The Hangar")
+                            .font(.footnote).fontWeight(.bold).foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
                     }
                     .padding()
                 }
 
-                // Navigation Link for Archives
-                NavigationLink {
-                    JediArchivesView(
-                        jediArchives: $dataStore.jediArchives, // Use DataStore
-                        // Explicitly create a closure with the correct signature
-                        setRatingAction: { book, rating in
-                            setRating(for: book, to: rating)
-                        },
-                        markAsUnreadAction: markAsUnread // Pass the new action
-                    )
-                } label: { // Empire Logo + Text Label
-                     VStack {
-                        Image("empire_logo")
-                            .resizable().aspectRatio(contentMode: .fit).frame(width: 100, height: 100)
-                        Text("Empire-Archives")
-                             .font(.footnote).fontWeight(.bold).foregroundColor(.white)
-                             .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
-                    }
-                     .padding()
-                }
+                Spacer() // Push Add button down
 
-                Spacer()
-
-                // Death Star Button to add books
+                // Bottom Row: Death Star Button to add books
                 Button {
                     showingAddBookSheet = true
                 } label: {
@@ -66,8 +101,6 @@ struct ContentView: View {
                  Image("starfield_background")
                     .resizable().scaledToFill().ignoresSafeArea()
             )
-            // REMOVED .onAppear
-            // REMOVED .onChange modifiers
             .sheet(isPresented: $showingAddBookSheet) { // Sheet to present AddBookView
                  AddBookView { newBook in
                      dataStore.holocronWishlist.append(newBook) // Add to DataStore
@@ -93,7 +126,7 @@ struct ContentView: View {
     // --- Core Action Functions (now operate on dataStore) ---
     func markAsRead(book: Book) {
         var bookToMove = book
-        bookToMove.rating = 0 // Reset rating when moving
+        bookToMove.rating = 0 // Reset rating when moving TO archives
         dataStore.jediArchives.append(bookToMove) // Use DataStore
 
         if let index = dataStore.holocronWishlist.firstIndex(where: { $0.id == book.id }) { // Use DataStore
@@ -120,11 +153,56 @@ struct ContentView: View {
         if let index = dataStore.jediArchives.firstIndex(where: { $0.id == book.id }) {
             let bookToMove = dataStore.jediArchives.remove(at: index)
             // Add back to wishlist (rating is preserved from archives)
+            // ** NOTE: This goes to WISHLIST as per clarification **
             dataStore.holocronWishlist.append(bookToMove)
             print("DEBUG markAsUnread: Move successful.")
         } else {
             print("ERROR markAsUnread: Book not found in archives to move back.")
         }
+    }
+
+    // --- Hangar Action Functions ---
+
+    func moveToHangarFromWishlist(book: Book) {
+        if let index = dataStore.holocronWishlist.firstIndex(where: { $0.id == book.id }) {
+            let bookToMove = dataStore.holocronWishlist.remove(at: index)
+            dataStore.inTheHangar.append(bookToMove)
+        } else {
+            print("ERROR moveToHangarFromWishlist: Book not found in wishlist.")
+        }
+    }
+
+    func moveToHangarFromArchives(book: Book) {
+        if let index = dataStore.jediArchives.firstIndex(where: { $0.id == book.id }) {
+            let bookToMove = dataStore.jediArchives.remove(at: index)
+            // Rating is preserved when moving from Archives to Hangar
+            dataStore.inTheHangar.append(bookToMove)
+        } else {
+            print("ERROR moveToHangarFromArchives: Book not found in archives.")
+        }
+    }
+
+    func moveFromHangarToArchives(book: Book) {
+        if let index = dataStore.inTheHangar.firstIndex(where: { $0.id == book.id }) {
+            let bookToMove = dataStore.inTheHangar.remove(at: index)
+            // Rating is preserved when moving from Hangar to Archives
+            dataStore.jediArchives.append(bookToMove)
+        } else {
+            print("ERROR moveFromHangarToArchives: Book not found in hangar.")
+        }
+    }
+
+    func setHangarRating(for book: Book, to newRating: Int) {
+        if let index = dataStore.inTheHangar.firstIndex(where: { $0.id == book.id }) {
+            let validatedRating = max(0, min(5, newRating))
+            dataStore.inTheHangar[index].rating = validatedRating
+        } else {
+            print("ERROR setHangarRating: Book not found in hangar.")
+        }
+    }
+
+    func reorderHangar(from source: IndexSet, to destination: Int) {
+        dataStore.inTheHangar.move(fromOffsets: source, toOffset: destination)
     }
 }
 
