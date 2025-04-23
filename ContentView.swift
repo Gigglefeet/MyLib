@@ -64,14 +64,15 @@ struct ContentView: View {
                 NavigationLink {
                     // Destination will be HangarView (created in Phase 4)
                     // Pass all required bindings and actions
-                     HangarView(
-                         inTheHangar: $dataStore.inTheHangar,
-                         moveFromHangarToArchives: moveFromHangarToArchives,
-                         setHangarRating: setHangarRating,
-                         reorderHangar: reorderHangar,
-                         wishlist: $dataStore.holocronWishlist, // Pass wishlist for adding
-                         moveToHangarFromWishlist: moveToHangarFromWishlist // Pass add action
-                     )
+                    HangarView(
+                        inTheHangar: $dataStore.inTheHangar,
+                        moveFromHangarToArchives: moveFromHangarToArchives,
+                        setHangarRating: setHangarRating,
+                        reorderHangar: reorderHangar,
+                        moveToHangarFromWishlist: moveToHangarFromWishlist,
+                        moveFromHangarToWishlist: moveFromHangarToWishlist,
+                        wishlist: $dataStore.holocronWishlist
+                    )
                 } label: {
                     VStack {
                         // Placeholder for Millennium Falcon
@@ -203,6 +204,16 @@ struct ContentView: View {
 
     func reorderHangar(from source: IndexSet, to destination: Int) {
         dataStore.inTheHangar.move(fromOffsets: source, toOffset: destination)
+    }
+
+    func moveFromHangarToWishlist(book: Book) {
+        if let index = dataStore.inTheHangar.firstIndex(where: { $0.id == book.id }) {
+            let bookToMove = dataStore.inTheHangar.remove(at: index)
+            // Rating is preserved when moving from Hangar to Wishlist
+            dataStore.holocronWishlist.append(bookToMove)
+        } else {
+            print("ERROR moveFromHangarToWishlist: Book not found in hangar.")
+        }
     }
 }
 

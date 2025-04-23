@@ -4,6 +4,7 @@ struct HangarBookRowView: View {
     // Data & Actions
     let book: Book
     var moveFromHangarToArchives: (Book) -> Void
+    var moveFromHangarToWishlist: (Book) -> Void
     var setHangarRating: (Book, Int) -> Void
     @Binding var bookToEdit: Book? // For tapping to edit
 
@@ -55,7 +56,15 @@ struct HangarBookRowView: View {
             }
             .tint(.green)
         }
-        // No swipe action requested for moving back to wishlist from Hangar yet
+        // Replace delete with Move to Wishlist action
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button {
+                moveFromHangarToWishlist(book)
+            } label: {
+                Label("Move to Wishlist", systemImage: "arrow.uturn.backward.circle")
+            }
+            .tint(.orange) // Match the color used in other views for wishlist actions
+        }
     }
 }
 
@@ -67,6 +76,11 @@ struct HangarBookRowView: View {
 
         func previewMoveToArchives(book: Book) {
             print("PREVIEW ROW: Move '\(book.title)' to Archives")
+            // In a real scenario, this would modify state, potentially removing the row
+        }
+        
+        func previewMoveToWishlist(book: Book) {
+            print("PREVIEW ROW: Move '\(book.title)' to Wishlist")
             // In a real scenario, this would modify state, potentially removing the row
         }
 
@@ -81,6 +95,7 @@ struct HangarBookRowView: View {
                  HangarBookRowView(
                     book: sampleBook,
                     moveFromHangarToArchives: previewMoveToArchives,
+                    moveFromHangarToWishlist: previewMoveToWishlist,
                     setHangarRating: previewSetRating,
                     bookToEdit: $editingBook
                 )
@@ -88,6 +103,7 @@ struct HangarBookRowView: View {
                  HangarBookRowView(
                     book: Book(title: "Another Book", author: "Someone Else", rating: 0),
                     moveFromHangarToArchives: previewMoveToArchives,
+                    moveFromHangarToWishlist: previewMoveToWishlist,
                     setHangarRating: previewSetRating,
                     bookToEdit: $editingBook
                 )

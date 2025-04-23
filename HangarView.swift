@@ -7,6 +7,7 @@ struct HangarView: View {
     var setHangarRating: (Book, Int) -> Void
     var reorderHangar: (IndexSet, Int) -> Void
     var moveToHangarFromWishlist: (Book) -> Void // Action to move book *to* hangar
+    var moveFromHangarToWishlist: (Book) -> Void // New action to move book back to wishlist
 
     // Binding for wishlist selection modal
     @Binding var wishlist: [Book] // Need the wishlist to show in the modal
@@ -66,11 +67,11 @@ struct HangarView: View {
                 PopulatedHangarView(
                     sortedHangar: sortedHangar,
                     moveFromHangarToArchives: moveFromHangarToArchives,
+                    moveFromHangarToWishlist: moveFromHangarToWishlist,
                     setHangarRating: setHangarRating,
                     bookToEdit: $bookToEdit,
                     sortOrder: $sortOrder,
                     reorderHangar: reorderHangar,
-                    deleteFromHangar: deleteFromHangar,
                     showingSelectWishlistSheet: $showingSelectWishlistSheet,
                     selectableWishlist: selectableWishlist
                 )
@@ -110,15 +111,6 @@ struct HangarView: View {
             }
         }
         .environment(\.colorScheme, .dark) // Apply dark theme
-    }
-    
-    // Delete function needs to operate on the original list binding
-    private func deleteFromHangar(at offsets: IndexSet) {
-        // Get the IDs of the books to delete based on the *sorted* list's offsets
-        let idsToDelete = offsets.map { sortedHangar[$0].id }
-        
-        // Remove items from the *original* list based on ID
-        inTheHangar.removeAll { idsToDelete.contains($0.id) }
     }
 }
 
@@ -163,13 +155,16 @@ struct EmptyHangarView: View {
 struct PopulatedHangarView: View {
     let sortedHangar: [Book]
     var moveFromHangarToArchives: (Book) -> Void
+    var moveFromHangarToWishlist: (Book) -> Void
     var setHangarRating: (Book, Int) -> Void
     @Binding var bookToEdit: Book?
     @Binding var sortOrder: HangarSortOrder
     var reorderHangar: (IndexSet, Int) -> Void
-    var deleteFromHangar: (IndexSet) -> Void
     @Binding var showingSelectWishlistSheet: Bool
     let selectableWishlist: [Book]
+    
+    // Proper SwiftUI way to handle edit mode
+    @State private var editMode: EditMode = .inactive
     
     var body: some View {
         List {
@@ -177,19 +172,22 @@ struct PopulatedHangarView: View {
                 HangarBookRowView(
                     book: book,
                     moveFromHangarToArchives: moveFromHangarToArchives,
+                    moveFromHangarToWishlist: moveFromHangarToWishlist,
                     setHangarRating: setHangarRating,
                     bookToEdit: $bookToEdit
                 )
             }
             .onMove(perform: sortOrder == .defaultOrder ? reorderHangar : nil)
-            .onDelete(perform: deleteFromHangar)
         }
-        .environment(\.editMode, .constant(sortOrder == .defaultOrder ? .active : .inactive))
+        // Use a binding to the EditMode state
+        .environment(\.editMode, $editMode)
+        .disabled(editMode == .active && sortOrder != .defaultOrder)
         .scrollContentBackground(.hidden)
         .navigationTitle("In The Hangar")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 if sortOrder == .defaultOrder {
+                    // Use the built-in EditButton which handles toggling edit mode properly
                     EditButton()
                 }
             }
@@ -198,6 +196,12 @@ struct PopulatedHangarView: View {
                     Picker("Sort Order", selection: $sortOrder) {
                         ForEach(HangarSortOrder.allCases) { order in
                             Text(order.rawValue).tag(order)
+                        }
+                    }
+                    // Add this to handle edit mode automatically
+                    .onChange(of: sortOrder) { _, newValue in
+                        if newValue != .defaultOrder && editMode == .active {
+                            editMode = .inactive
                         }
                     }
                 } label: {
@@ -238,6 +242,14 @@ struct PopulatedHangarView: View {
                 print("PREVIEW: Moved '\(movedBook.title)' to Archives")
             }
         }
+        
+        func previewMoveToWishlist(book: Book) {
+            if let index = previewHangar.firstIndex(where: { $0.id == book.id }) {
+                let movedBook = previewHangar.remove(at: index)
+                previewWishlist.append(movedBook)
+                print("PREVIEW: Moved '\(movedBook.title)' to Wishlist")
+            }
+        }
 
         func previewSetRating(book: Book, rating: Int) {
             if let index = previewHangar.firstIndex(where: { $0.id == book.id }) {
@@ -267,7 +279,8 @@ struct PopulatedHangarView: View {
                     moveFromHangarToArchives: previewMoveToArchives,
                     setHangarRating: previewSetRating,
                     reorderHangar: previewReorder,
-                    moveToHangarFromWishlist: previewMoveToHangar, // Moved before wishlist
+                    moveToHangarFromWishlist: previewMoveToHangar,
+                    moveFromHangarToWishlist: previewMoveToWishlist,
                     wishlist: $previewWishlist
                 )
             }
