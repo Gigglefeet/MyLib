@@ -79,7 +79,7 @@ struct ContentView: View {
                         Image(systemName: "airplane.circle.fill") // Placeholder Icon
                              .resizable().aspectRatio(contentMode: .fit).frame(width: 100, height: 100)
                              .foregroundColor(.cyan) // Give it some color
-                        Text("In The Hangar")
+                        Text("The Hangar")
                             .font(.footnote).fontWeight(.bold).foregroundColor(.white)
                             .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
                     }

@@ -41,13 +41,22 @@ struct WishlistBookRowView: View {
         }
         .listRowBackground(Color.clear)
         .swipeActions(edge: .leading, allowsFullSwipe: false) { // Mark Read swipe (Keep on leading)
-            Button { markAsReadAction(book) } label: { Label("Mark Read", systemImage: "checkmark.circle.fill") }.tint(.green)
+            Button { markAsReadAction(book) } label: { 
+                // Using custom Label approach since SF Symbols doesn't have empire logo
+                HStack {
+                    Image("empire_logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                    Text("Mark Read")
+                }
+            }.tint(.green)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) { // Add Hangar action to trailing edge
              Button {
                  moveToHangarAction(book)
              } label: {
-                 // Using the placeholder icon for now
+                 // Using the airplane icon for Hangar
                  Label("Start Reading", systemImage: "airplane.circle.fill")
              }
              .tint(.cyan) // Use a distinct color

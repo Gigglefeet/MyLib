@@ -52,7 +52,14 @@ struct HangarBookRowView: View {
             Button {
                 moveFromHangarToArchives(book)
             } label: {
-                Label("Mark Finished", systemImage: "checkmark.circle.fill")
+                // Using custom Label approach since SF Symbols doesn't have empire logo
+                HStack {
+                    Image("empire_logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                    Text("Mark Finished")
+                }
             }
             .tint(.green)
         }
@@ -61,7 +68,14 @@ struct HangarBookRowView: View {
             Button {
                 moveFromHangarToWishlist(book)
             } label: {
-                Label("Move to Wishlist", systemImage: "arrow.uturn.backward.circle")
+                // Using custom Label approach since SF Symbols doesn't have rebel logo
+                HStack {
+                    Image("rebel_logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                    Text("Move to Wishlist")
+                }
             }
             .tint(.orange) // Match the color used in other views for wishlist actions
         }

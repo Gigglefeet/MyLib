@@ -54,7 +54,7 @@ struct ArchiveBookRowView: View {
              Button {
                  moveToHangarAction(book)
              } label: {
-                 Label("Read Again", systemImage: "airplane.circle.fill") // Placeholder
+                 Label("Read Again", systemImage: "airplane.circle.fill") // Keep airplane for Hangar
              }
              .tint(.cyan) // Match Wishlist hangar action color
         }
@@ -63,7 +63,14 @@ struct ArchiveBookRowView: View {
             Button {
                 markAsUnreadAction(book) // This action moves to Wishlist
             } label: {
-                Label("Move to Wishlist", systemImage: "arrow.uturn.backward.circle.fill")
+                // Using custom Label approach since SF Symbols doesn't have rebel logo
+                HStack {
+                    Image("rebel_logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                    Text("Move to Wishlist")
+                }
             }
             .tint(.orange)
         }
