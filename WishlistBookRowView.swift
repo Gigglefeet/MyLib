@@ -67,7 +67,7 @@ struct WishlistBookRowView: View {
 // Basic Preview for the Row - Needs update for new action
 #Preview {
     struct RowPreviewWrapper: View {
-        @State var sampleBook = Book(title: "Wishlist Book", author: "Author W", rating: 2, notes: "Some notes") // Added rating/notes
+        @State var sampleBook = Book(title: "Wishlist Book", author: "Author W", notes: "Some notes", rating: 2) // Fixed parameter order
         @State var editingBook: Book? = nil
 
         func previewMarkRead(book: Book) { print("PREVIEW ROW: Mark Read '\(book.title)'") }

@@ -85,7 +85,7 @@ struct HangarBookRowView: View {
 // Preview for HangarBookRowView
 #Preview {
     struct HangarRowPreviewWrapper: View {
-        @State var sampleBook = Book(title: "Row Preview Book", author: "Row Author", rating: 3, notes: "Preview notes...")
+        @State var sampleBook = Book(title: "Row Preview Book", author: "Row Author", notes: "Preview notes...", rating: 3)
         @State var editingBook: Book? = nil
 
         func previewMoveToArchives(book: Book) {
