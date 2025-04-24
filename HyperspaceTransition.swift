@@ -74,10 +74,146 @@ struct HyperspaceStreak: View {
     }
 }
 
-// Extension for NavigationLink to use hyperspace transition
+// Extension for NavigationLink to use hyperspace transition (for custom navigation scenarios)
 extension View {
     func hyperspaceTransition() -> some View {
         self.transition(.hyperspace.combined(with: .opacity).animation(.easeInOut(duration: 0.5)))
+    }
+    
+    // For use with NavigationView - simplified version that won't interfere with navigation
+    func navigationHyperspaceEffect() -> some View {
+        self.modifier(SafeHyperspaceModifier())
+    }
+}
+
+// A safer modifier that doesn't add UIViewControllerRepresentable which might interfere with navigation
+struct SafeHyperspaceModifier: ViewModifier {
+    @State private var isActive = false
+    
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                // Short delay then animate in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        isActive = true
+                    }
+                }
+            }
+            .modifier(HyperspaceFlashEffect(isActive: isActive))
+    }
+}
+
+// A simpler effect that adds a quick flash of streaks around the edges
+struct HyperspaceFlashEffect: ViewModifier {
+    let isActive: Bool
+    
+    @State private var flashOpacity: Double = 0
+    
+    func body(content: Content) -> some View {
+        ZStack {
+            content
+            
+            // Only show effect briefly when appearing
+            if isActive {
+                GeometryReader { geometry in
+                    ZStack {
+                        // Edge flash
+                        VStack {
+                            HStack {
+                                ForEach(0..<15) { _ in
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.7))
+                                        .frame(width: CGFloat.random(in: 1...3), 
+                                               height: CGFloat.random(in: 30...100))
+                                        .blur(radius: 2)
+                                        .rotationEffect(.degrees(90))
+                                        .offset(y: -CGFloat.random(in: 0...20))
+                                }
+                            }
+                            .frame(width: geometry.size.width)
+                            
+                            Spacer()
+                            
+                            HStack {
+                                ForEach(0..<15) { _ in
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.7))
+                                        .frame(width: CGFloat.random(in: 1...3), 
+                                               height: CGFloat.random(in: 30...100))
+                                        .blur(radius: 2)
+                                        .rotationEffect(.degrees(90))
+                                        .offset(y: CGFloat.random(in: 0...20))
+                                }
+                            }
+                            .frame(width: geometry.size.width)
+                        }
+                        .frame(height: geometry.size.height)
+                        
+                        // Side flashes
+                        HStack {
+                            VStack {
+                                ForEach(0..<15) { _ in
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.7))
+                                        .frame(width: CGFloat.random(in: 1...3), 
+                                               height: CGFloat.random(in: 30...100))
+                                        .blur(radius: 2)
+                                        .offset(x: -CGFloat.random(in: 0...20))
+                                }
+                            }
+                            .frame(height: geometry.size.height)
+                            
+                            Spacer()
+                            
+                            VStack {
+                                ForEach(0..<15) { _ in
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.7))
+                                        .frame(width: CGFloat.random(in: 1...3), 
+                                               height: CGFloat.random(in: 30...100))
+                                        .blur(radius: 2)
+                                        .offset(x: CGFloat.random(in: 0...20))
+                                }
+                            }
+                            .frame(height: geometry.size.height)
+                        }
+                        .frame(width: geometry.size.width)
+                    }
+                    .opacity(flashOpacity)
+                }
+                .onAppear {
+                    withAnimation(.easeIn(duration: 0.1)) {
+                        flashOpacity = 1.0
+                    }
+                    
+                    // Automatically remove the effect
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            flashOpacity = 0
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// KEEPING THE ORIGINAL COORDINATOR FOR REFERENCE BUT IT'S NOT USED ANYMORE
+// Coordinator to handle navigation transitions
+struct HyperspaceTransitionCoordinator: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        // Monitor navigation transactions
+        if let coordinator = uiViewController.navigationController?.transitionCoordinator {
+            coordinator.animate(alongsideTransition: { context in
+                // Could trigger custom animations here
+            })
+        }
     }
 }
 
@@ -100,7 +236,7 @@ struct HyperspaceTransitionDemo: View {
                         .font(.largeTitle)
                         .foregroundColor(.white)
                     Button("Go Back") {
-                        withAnimation {
+                        withAnimation(.easeInOut(duration: 0.8)) {
                             showDestination = false
                         }
                     }
@@ -108,14 +244,14 @@ struct HyperspaceTransitionDemo: View {
                     .padding()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .hyperspaceTransition()
+                .transition(.hyperspace)
             } else {
                 VStack {
                     Text("Origin")
                         .font(.largeTitle)
                         .foregroundColor(.white)
                     Button("Jump to Hyperspace") {
-                        withAnimation {
+                        withAnimation(.easeInOut(duration: 0.8)) {
                             showDestination = true
                         }
                     }
@@ -123,7 +259,6 @@ struct HyperspaceTransitionDemo: View {
                     .padding()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .hyperspaceTransition()
             }
         }
     }

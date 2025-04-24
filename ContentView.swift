@@ -23,7 +23,7 @@ struct ContentView: View {
                              markAsReadAction: markAsRead,
                              moveToHangarAction: moveToHangarFromWishlist // Pass new action
                          )
-                         .hyperspaceTransition()
+                         .navigationHyperspaceEffect() // Apply our custom transition effect
                     } label: { // Rebel Logo + Text Label
                         VStack {
                             Image("rebel_logo")
@@ -45,7 +45,7 @@ struct ContentView: View {
                             markAsUnreadAction: markAsUnread, // Keep existing action
                             moveToHangarAction: moveToHangarFromArchives // Pass new action
                         )
-                        .hyperspaceTransition()
+                        .navigationHyperspaceEffect() // Apply our custom transition effect
                     } label: { // Empire Logo + Text Label
                          VStack {
                             Image("empire_logo")
@@ -75,7 +75,7 @@ struct ContentView: View {
                          moveFromHangarToWishlist: moveFromHangarToWishlist,
                          wishlist: $dataStore.holocronWishlist
                      )
-                     .hyperspaceTransition()
+                     .navigationHyperspaceEffect() // Apply our custom transition effect
                 } label: {
                     VStack {
                         // Placeholder for Millennium Falcon
@@ -103,6 +103,8 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background( // Replace static starfield with animated one
                 StarfieldView(starCount: 150)
+                    .edgesIgnoringSafeArea(.all)
+                    .transition(AnyTransition.opacity.combined(with: .scale))
             )
             .sheet(isPresented: $showingAddBookSheet) { // Sheet to present AddBookView
                  AddBookView { newBook in
@@ -119,8 +121,9 @@ struct ContentView: View {
                 }
             }
         }
-         .environment(\.colorScheme, .dark) // Apply dark theme globally
-         .navigationViewStyle(.stack) // Use stack navigation
+        .environment(\.colorScheme, .dark) // Apply dark theme globally
+        .navigationViewStyle(.stack) // Use stack navigation
+        .preferredColorScheme(.dark) // Ensure dark mode for the entire app
     }
 
     // REMOVED saveData()
