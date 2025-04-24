@@ -101,7 +101,7 @@ struct CinematicHyperspaceModifier: ViewModifier {
             
             // Full-screen hyperspace effect
             if showHyperspace {
-                HyperspaceAnimationView()
+                HyperspaceJumpView()
                     .edgesIgnoringSafeArea(.all)
                     .transition(.opacity)
             }
@@ -112,8 +112,8 @@ struct CinematicHyperspaceModifier: ViewModifier {
                 showHyperspace = true
             }
             
-            // After 1 second, show the destination
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            // After 0.7 seconds, show the destination
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                 withAnimation(.easeOut(duration: 0.2)) {
                     showHyperspace = false
                     showDestination = true
@@ -123,29 +123,29 @@ struct CinematicHyperspaceModifier: ViewModifier {
     }
 }
 
-// Animated hyperspace view
-struct HyperspaceAnimationView: View {
-    @State private var animationProgress: Double = 0
+// Real-time animated hyperspace view
+struct HyperspaceJumpView: View {
+    // Animation duration
+    private let animationDuration: Double = 0.6
     
     var body: some View {
-        TimelineView(.animation) { timeline in
-            HyperspaceStarfield(progress: animationProgress)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.8)) {
-                animationProgress = 1.0
-            }
+        TimelineView(.animation(minimumInterval: 0.01, paused: false)) { context in
+            // Calculate progress (0 to 1) based on time since view appeared
+            let progress = min(1.0, context.date.timeIntervalSince1970.truncatingRemainder(dividingBy: 100) / animationDuration)
+            
+            HyperspaceStarfieldView(progress: progress)
+                .id(context.date.timeIntervalSinceReferenceDate) // Force redraw each frame
         }
     }
 }
 
 // Full-screen cinematic hyperspace view with real-time animation
-struct HyperspaceStarfield: View {
+struct HyperspaceStarfieldView: View {
+    // The current animation progress (0 to 1)
     let progress: Double
-    @State private var stars: [HyperStar] = []
     
-    // Random initial positions
-    private let starCount = 200
+    // Star configurations - created only once per view instance
+    let stars: [HyperStar] = generateStars(count: 200)
     
     var body: some View {
         GeometryReader { geometry in
@@ -153,7 +153,7 @@ struct HyperspaceStarfield: View {
                 // Deep space background
                 Color.black
                 
-                // Central glow
+                // Central glow that fades as animation progresses
                 Circle()
                     .fill(
                         RadialGradient(
@@ -164,47 +164,56 @@ struct HyperspaceStarfield: View {
                         )
                     )
                     .frame(width: 60 + 100 * progress)
-                    .opacity(max(0, 1 - progress))
+                    .opacity(max(0, 1 - progress * 1.5))
                     .blur(radius: 5)
                 
                 // Dynamic star streaks
-                ForEach(0..<stars.count, id: \.self) { index in
-                    if index < stars.count {
-                        let star = stars[index]
-                        StarStreakView(
-                            startPoint: star.startPoint,
-                            endPoint: calculateEndPoint(
-                                start: star.startPoint, 
-                                angle: star.angle, 
-                                progress: progress, 
-                                speed: star.speed,
-                                size: geometry.size
-                            ),
-                            width: star.width,
-                            color: star.color,
-                            progress: progress
-                        )
+                ForEach(stars.indices, id: \.self) { index in
+                    let star = stars[index]
+                    
+                    // Calculate end point based on current progress
+                    let endPoint = calculateEndPoint(
+                        center: CGPoint(x: geometry.size.width/2, y: geometry.size.height/2),
+                        angle: star.angle,
+                        progress: progress,
+                        speed: star.speed,
+                        size: geometry.size
+                    )
+                    
+                    // Draw streak based on star's starting position relative to center
+                    let startPoint = calculateStartPoint(
+                        center: CGPoint(x: geometry.size.width/2, y: geometry.size.height/2),
+                        angle: star.angle,
+                        progress: progress,
+                        initialRadius: star.initialRadius
+                    )
+                    
+                    Path { path in
+                        path.move(to: startPoint)
+                        path.addLine(to: endPoint)
                     }
+                    .stroke(
+                        star.color,
+                        style: StrokeStyle(
+                            lineWidth: star.width,
+                            lineCap: .round
+                        )
+                    )
+                    .blur(radius: star.width * 0.5)
+                    // Calculate opacity based on distance and progress
+                    .opacity(calculateOpacity(startPoint: startPoint, endPoint: endPoint, progress: progress))
                 }
-            }
-            .onAppear {
-                initializeStars(size: geometry.size)
             }
         }
     }
     
-    private func initializeStars(size: CGSize) {
-        stars = (0..<starCount).map { _ in
-            let angleRad = CGFloat.random(in: 0..<2*CGFloat.pi)
-            let startRadius = CGFloat.random(in: 0...20)
-            let startPoint = CGPoint(
-                x: size.width/2 + cos(angleRad) * startRadius,
-                y: size.height/2 + sin(angleRad) * startRadius
-            )
-            
+    // Generate a fixed set of stars with random properties
+    private static func generateStars(count: Int) -> [HyperStar] {
+        (0..<count).map { _ in
+            let angle = CGFloat.random(in: 0..<2*CGFloat.pi)
             return HyperStar(
-                startPoint: startPoint,
-                angle: angleRad,
+                angle: angle,
+                initialRadius: CGFloat.random(in: 0...15),
                 width: CGFloat.random(in: 1...3),
                 speed: CGFloat.random(in: 0.7...1.5),
                 color: starColor()
@@ -212,17 +221,52 @@ struct HyperspaceStarfield: View {
         }
     }
     
-    private func calculateEndPoint(start: CGPoint, angle: CGFloat, progress: Double, speed: CGFloat, size: CGSize) -> CGPoint {
-        let maxDistance = max(size.width, size.height) * 1.5
-        let distance = maxDistance * progress * speed
+    // Calculate starting point that moves slightly outward as animation progresses
+    private func calculateStartPoint(center: CGPoint, angle: CGFloat, progress: Double, initialRadius: CGFloat) -> CGPoint {
+        // Start radius grows slightly with progress
+        let startRadius = initialRadius * (1 + progress * 0.5)
         
         return CGPoint(
-            x: start.x + cos(angle) * distance,
-            y: start.y + sin(angle) * distance
+            x: center.x + cos(Double(angle)) * startRadius,
+            y: center.y + sin(Double(angle)) * startRadius
         )
     }
     
-    private func starColor() -> Color {
+    // Calculate end point that extends outward as animation progresses
+    private func calculateEndPoint(center: CGPoint, angle: CGFloat, progress: Double, speed: CGFloat, size: CGSize) -> CGPoint {
+        // Maximum possible distance to ensure streaks extend beyond screen
+        let maxDistance = max(size.width, size.height) * 1.5
+        
+        // Current distance based on progress - use easeOut curve for more dynamic feel
+        let easedProgress = 1 - pow(1 - progress, 2) // Quadratic ease out
+        let distance = maxDistance * easedProgress * speed
+        
+        return CGPoint(
+            x: center.x + cos(Double(angle)) * distance,
+            y: center.y + sin(Double(angle)) * distance
+        )
+    }
+    
+    // Calculate opacity that fades as stars reach the edge
+    private func calculateOpacity(startPoint: CGPoint, endPoint: CGPoint, progress: Double) -> Double {
+        // Distance from end point to start point
+        let distance = sqrt(
+            pow(endPoint.x - startPoint.x, 2) +
+            pow(endPoint.y - startPoint.y, 2)
+        )
+        
+        // Normalize by max expected distance
+        let normalizedDistance = distance / 2000
+        
+        // Fade out as distance increases, but ensure visibility during early animation
+        let distanceOpacity = max(0, 1.0 - normalizedDistance * 0.8)
+        
+        // Ensure streaks stay visible during early animation
+        return min(1, max(0.2, distanceOpacity + (1 - progress) * 0.5))
+    }
+    
+    // Generate random star colors with blue/white bias
+    private static func starColor() -> Color {
         let colors: [Color] = [
             .white, .white, .white, 
             .blue.opacity(0.9),
@@ -234,30 +278,11 @@ struct HyperspaceStarfield: View {
 
 // Data structure for a hyperspace star
 struct HyperStar {
-    let startPoint: CGPoint
-    let angle: CGFloat
-    let width: CGFloat
-    let speed: CGFloat
-    let color: Color
-}
-
-// Individual animated star streak view
-struct StarStreakView: View {
-    let startPoint: CGPoint
-    let endPoint: CGPoint
-    let width: CGFloat
-    let color: Color
-    let progress: Double
-    
-    var body: some View {
-        Path { path in
-            path.move(to: startPoint)
-            path.addLine(to: endPoint)
-        }
-        .stroke(color, lineWidth: width)
-        .blur(radius: width * 0.5)
-        .opacity(min(1, max(0.2, progress * 2)))
-    }
+    let angle: CGFloat        // Direction angle in radians
+    let initialRadius: CGFloat // Initial distance from center
+    let width: CGFloat        // Width of the streak
+    let speed: CGFloat        // Relative speed factor
+    let color: Color          // Color of the streak
 }
 
 // KEEPING THE ORIGINAL COORDINATOR FOR REFERENCE BUT IT'S NOT USED ANYMORE
