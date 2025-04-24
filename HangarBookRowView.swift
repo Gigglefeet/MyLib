@@ -37,8 +37,10 @@ struct HangarBookRowView: View {
                     )
                     .onTapGesture {
                         // Allow setting rating to 0 by tapping the current rating star
-                        let newRating = (starIndex == book.rating) ? 0 : starIndex
-                        setHangarRating(book, newRating)
+                        withAnimation {
+                            let newRating = (starIndex == book.rating) ? 0 : starIndex
+                            setHangarRating(book, newRating)
+                        }
                     }
                 }
             }

@@ -10,6 +10,10 @@ struct LightsaberView: View {
     // Size option to match font sizes
     var size: Font
     
+    // Animation state properties
+    @State private var isAnimating: Bool = false
+    @State private var glowIntensity: Double = 1.0
+    
     // Size constants based on font size
     private var bladeLength: CGFloat {
         switch size {
@@ -47,13 +51,16 @@ struct LightsaberView: View {
     
     var body: some View {
         HStack(spacing: 1) {
-            // Blade
+            // Blade with animation
             Capsule()
                 .fill(isLit ? color : Color.gray.opacity(0.3))
-                .frame(width: bladeLength, height: bladeWidth)
+                .frame(width: isLit ? bladeLength : 1, height: bladeWidth) // Contract when off
                 .opacity(isLit ? 1.0 : 0.5)
-                // Add glow effect when lit
-                .shadow(color: isLit ? color.opacity(0.7) : .clear, radius: isLit ? 2 : 0)
+                // Add glow effect when lit with animation
+                .shadow(color: isLit ? color.opacity(0.7 * glowIntensity) : .clear, 
+                       radius: isLit ? 2 * CGFloat(glowIntensity) : 0)
+                // Add ignition animation
+                .animation(.interpolatingSpring(stiffness: 170, damping: 15), value: isLit)
             
             // Hilt
             RoundedRectangle(cornerRadius: 1)
@@ -69,6 +76,40 @@ struct LightsaberView: View {
                 )
         }
         .rotationEffect(.degrees(45)) // Angle the lightsaber diagonally
+        .onAppear {
+            // Only start the humming animation if the lightsaber is lit
+            if isLit {
+                startHummingAnimation()
+            }
+        }
+        .onChange(of: isLit) { _, newValue in
+            if newValue {
+                // Start the humming animation when lightsaber is turned on
+                startHummingAnimation()
+            } else {
+                // Stop the animation when turned off
+                isAnimating = false
+            }
+        }
+    }
+    
+    // Function to create the subtle humming effect
+    private func startHummingAnimation() {
+        isAnimating = true
+        
+        // Create a subtle pulsing glow effect
+        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+            glowIntensity = 0.85 // Pulse down to 85%
+        }
+        
+        // After a brief delay, bring the intensity back up
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+            if isAnimating {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    glowIntensity = 1.0 // Back to 100%
+                }
+            }
+        }
     }
 }
 
@@ -126,7 +167,34 @@ extension LightsaberView {
                 )
             }
         }
+        
+        // Animated toggle example
+        AnimatedLightsaberDemo()
     }
     .padding()
     .background(Color.black)
+}
+
+// Demo view for animation preview
+struct AnimatedLightsaberDemo: View {
+    @State private var isOn = false
+    
+    var body: some View {
+        VStack {
+            Button("Toggle Lightsaber") {
+                withAnimation {
+                    isOn.toggle()
+                }
+            }
+            .foregroundColor(.white)
+            .padding(.bottom, 10)
+            
+            LightsaberView(
+                isLit: isOn,
+                color: .green,
+                size: .title
+            )
+            .padding()
+        }
+    }
 } 
