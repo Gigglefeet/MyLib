@@ -30,16 +30,18 @@ struct ArchiveBookRowView: View {
             }
             Spacer() // Push rating display to the right
 
-            // Interactive Rating Stars
+            // Interactive Lightsaber Ratings (replacing stars)
             HStack {
                 ForEach(1...5, id: \.self) { starIndex in
-                    Image(systemName: starIndex <= book.rating ? "star.fill" : "star")
-                        .foregroundColor(.yellow)
-                        .font(.caption)
-                        .onTapGesture {
-                            let newRating = (starIndex == book.rating) ? 0 : starIndex
-                            setRatingAction(book, newRating)
-                        }
+                    LightsaberView(
+                        isLit: starIndex <= book.rating,
+                        color: LightsaberView.colorForIndex(starIndex),
+                        size: .caption
+                    )
+                    .onTapGesture {
+                        let newRating = (starIndex == book.rating) ? 0 : starIndex
+                        setRatingAction(book, newRating)
+                    }
                 }
             }
         } // End of Row HStack
@@ -80,7 +82,7 @@ struct ArchiveBookRowView: View {
 // Preview for the Row - Needs update for new action
 #Preview {
     struct RowPreviewWrapper: View {
-        @State var sampleBook = Book(title: "Archive Preview", author: "Author Arc", rating: 3, notes: "Archive notes.")
+        @State var sampleBook = Book(title: "Archive Preview", author: "Author Arc", notes: "Archive notes.", rating: 3)
         @State var editingBook: Book? = nil
 
         func previewSetRating(book: Book, rating: Int) {
@@ -118,3 +120,4 @@ struct ArchiveBookRowView: View {
     }
     return RowPreviewWrapper()
 }
+

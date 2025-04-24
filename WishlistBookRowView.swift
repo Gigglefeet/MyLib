@@ -15,14 +15,16 @@ struct WishlistBookRowView: View {
             
             // Display rating stars if rating > 0
             if book.rating > 0 {
-                HStack(spacing: 2) { 
-                     ForEach(0..<book.rating, id: \.self) { _ in
-                         Image(systemName: "star.fill")
-                             .foregroundColor(.yellow)
-                             .font(.caption) // Match archive view size
-                     }
-                 }
-                 .padding(.top, 1) // Add a little space above stars
+                HStack(spacing: 2) {
+                    ForEach(0..<book.rating, id: \.self) { index in
+                        LightsaberView(
+                            isLit: true,
+                            color: LightsaberView.colorForIndex(index + 1),
+                            size: .caption
+                        )
+                    }
+                }
+                .padding(.top, 1) // Add a little space above lightsabers
             }
             
             // Add notes preview if notes exist
@@ -41,7 +43,7 @@ struct WishlistBookRowView: View {
         }
         .listRowBackground(Color.clear)
         .swipeActions(edge: .leading, allowsFullSwipe: false) { // Mark Read swipe (Keep on leading)
-            Button { markAsReadAction(book) } label: { 
+            Button { markAsReadAction(book) } label: {
                 // Using custom Label approach since SF Symbols doesn't have empire logo
                 HStack {
                     Image("empire_logo")

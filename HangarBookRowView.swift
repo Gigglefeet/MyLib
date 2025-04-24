@@ -27,17 +27,19 @@ struct HangarBookRowView: View {
 
             Spacer() // Push rating stars to the right
 
-            // Interactive Rating Stars
-            HStack(spacing: 2) { // Reduced spacing for tighter stars
+            // Interactive Lightsaber Ratings (replacing stars)
+            HStack(spacing: 2) { // Reduced spacing for tighter lightsabers
                 ForEach(1...5, id: \.self) { starIndex in
-                    Image(systemName: starIndex <= book.rating ? "star.fill" : "star")
-                        .foregroundColor(.yellow)
-                        .font(.caption) // Keep size consistent
-                        .onTapGesture {
-                            // Allow setting rating to 0 by tapping the current rating star
-                            let newRating = (starIndex == book.rating) ? 0 : starIndex
-                            setHangarRating(book, newRating)
-                        }
+                    LightsaberView(
+                        isLit: starIndex <= book.rating,
+                        color: LightsaberView.colorForIndex(starIndex),
+                        size: .caption
+                    )
+                    .onTapGesture {
+                        // Allow setting rating to 0 by tapping the current rating star
+                        let newRating = (starIndex == book.rating) ? 0 : starIndex
+                        setHangarRating(book, newRating)
+                    }
                 }
             }
         } // End of Row HStack
