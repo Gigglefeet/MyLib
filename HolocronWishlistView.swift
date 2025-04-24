@@ -45,33 +45,41 @@ struct HolocronWishlistView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity) // Ensure VStack fills space
+            // Add starfield background
+            .background(
+                StarfieldView(starCount: 100, twinkleAnimation: true, parallaxEnabled: true)
+                    .opacity(0.8) // Slightly brighter for Jedi theme
+            )
         } else {
             // Show the list if not empty
-            List {
-                // Use the computed sortedWishlist
-                ForEach(sortedWishlist) { book in
-                    // Use the dedicated row view
-                    WishlistBookRowView(
-                        book: book,
-                        markAsReadAction: markAsReadAction,
-                        moveToHangarAction: moveToHangarAction,
-                        bookToEdit: $bookToEdit // Pass binding for tap-to-edit
-                    )
+            ZStack {
+                // Add starfield background
+                StarfieldView(starCount: 100, twinkleAnimation: true, parallaxEnabled: true)
+                    .opacity(0.8) // Slightly brighter for Jedi theme
+                
+                List {
+                    // Use the computed sortedWishlist
+                    ForEach(sortedWishlist) { book in
+                        // Use the dedicated row view
+                        WishlistBookRowView(
+                            book: book,
+                            markAsReadAction: markAsReadAction,
+                            moveToHangarAction: moveToHangarAction,
+                            bookToEdit: $bookToEdit // Pass binding for tap-to-edit
+                        )
+                    }
+                    .onDelete(perform: deleteFromWishlist)
                 }
-                .onDelete(perform: deleteFromWishlist)
+                .background(Color.black) // Set background to black
+                .scrollContentBackground(.hidden)
+                .listStyle(.plain)
             }
-            .background(Color.black) // Set background to black
-            .scrollContentBackground(.hidden)
-            .listStyle(.plain)
-            // **** REMOVED .toolbar { ... } MODIFIER ****
-
             // **** ADD BACK .navigationTitle ****
             .navigationTitle("Jedi-Wishlist")
             // **** END ADD BACK ****
 
             .environment(\.colorScheme, .dark)
             .toolbarColorScheme(.dark, for: .navigationBar) // Ensure nav bar elements are light
-            // .navigationBarTitleDisplayMode(.inline) // REMOVED Commented out line
             .sheet(item: $bookToEdit) { bookForItem in // Keep sheet
                 if let index = holocronWishlist.firstIndex(where: { $0.id == bookForItem.id }) {
                     // Use the EditBookView that uses NavigationView internally (from previous step)

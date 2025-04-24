@@ -23,6 +23,7 @@ struct ContentView: View {
                              markAsReadAction: markAsRead,
                              moveToHangarAction: moveToHangarFromWishlist // Pass new action
                          )
+                         .hyperspaceTransition()
                     } label: { // Rebel Logo + Text Label
                         VStack {
                             Image("rebel_logo")
@@ -44,6 +45,7 @@ struct ContentView: View {
                             markAsUnreadAction: markAsUnread, // Keep existing action
                             moveToHangarAction: moveToHangarFromArchives // Pass new action
                         )
+                        .hyperspaceTransition()
                     } label: { // Empire Logo + Text Label
                          VStack {
                             Image("empire_logo")
@@ -64,22 +66,23 @@ struct ContentView: View {
                 NavigationLink {
                     // Destination will be HangarView (created in Phase 4)
                     // Pass all required bindings and actions
-                    HangarView(
-                        inTheHangar: $dataStore.inTheHangar,
-                        moveFromHangarToArchives: moveFromHangarToArchives,
-                        setHangarRating: setHangarRating,
-                        reorderHangar: reorderHangar,
-                        moveToHangarFromWishlist: moveToHangarFromWishlist,
-                        moveFromHangarToWishlist: moveFromHangarToWishlist,
-                        wishlist: $dataStore.holocronWishlist
-                    )
+                     HangarView(
+                         inTheHangar: $dataStore.inTheHangar,
+                         moveFromHangarToArchives: moveFromHangarToArchives,
+                         setHangarRating: setHangarRating,
+                         reorderHangar: reorderHangar,
+                         moveToHangarFromWishlist: moveToHangarFromWishlist,
+                         moveFromHangarToWishlist: moveFromHangarToWishlist,
+                         wishlist: $dataStore.holocronWishlist
+                     )
+                     .hyperspaceTransition()
                 } label: {
                     VStack {
                         // Placeholder for Millennium Falcon
                         Image(systemName: "airplane.circle.fill") // Placeholder Icon
                              .resizable().aspectRatio(contentMode: .fit).frame(width: 100, height: 100)
                              .foregroundColor(.cyan) // Give it some color
-                        Text("The Hangar")
+                        Text("In The Hangar")
                             .font(.footnote).fontWeight(.bold).foregroundColor(.white)
                             .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
                     }
@@ -98,9 +101,8 @@ struct ContentView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background( // Starfield background
-                 Image("starfield_background")
-                    .resizable().scaledToFill().ignoresSafeArea()
+            .background( // Replace static starfield with animated one
+                StarfieldView(starCount: 150)
             )
             .sheet(isPresented: $showingAddBookSheet) { // Sheet to present AddBookView
                  AddBookView { newBook in

@@ -59,41 +59,62 @@ struct HangarView: View {
         ZStack {
             // Check if the hangar list is empty
             if inTheHangar.isEmpty && !showingSelectWishlistSheet { // Avoid flicker when sheet shows
-                EmptyHangarView(
-                    showingSelectWishlistSheet: $showingSelectWishlistSheet,
-                    selectableWishlist: selectableWishlist
-                )
+                ZStack {
+                    // Add cyan-tinted starfield for Hangar theme
+                    StarfieldView(starCount: 120, twinkleAnimation: true, parallaxEnabled: true)
+                        .opacity(0.9)
+                        .colorMultiply(Color.cyan.opacity(0.2)) // Give slight cyan tint
+                    
+                    EmptyHangarView(
+                        showingSelectWishlistSheet: $showingSelectWishlistSheet,
+                        selectableWishlist: selectableWishlist
+                    )
+                }
             } else {
-                PopulatedHangarView(
-                    sortedHangar: sortedHangar,
-                    moveFromHangarToArchives: moveFromHangarToArchives,
-                    moveFromHangarToWishlist: moveFromHangarToWishlist,
-                    setHangarRating: setHangarRating,
-                    bookToEdit: $bookToEdit,
-                    sortOrder: $sortOrder,
-                    reorderHangar: reorderHangar,
-                    showingSelectWishlistSheet: $showingSelectWishlistSheet,
-                    selectableWishlist: selectableWishlist
-                )
+                ZStack {
+                    // Add cyan-tinted starfield for Hangar theme
+                    StarfieldView(starCount: 120, twinkleAnimation: true, parallaxEnabled: true)
+                        .opacity(0.9)
+                        .colorMultiply(Color.cyan.opacity(0.2)) // Give slight cyan tint
+                    
+                    PopulatedHangarView(
+                        sortedHangar: sortedHangar,
+                        moveFromHangarToArchives: moveFromHangarToArchives,
+                        moveFromHangarToWishlist: moveFromHangarToWishlist,
+                        setHangarRating: setHangarRating,
+                        bookToEdit: $bookToEdit,
+                        sortOrder: $sortOrder,
+                        reorderHangar: reorderHangar,
+                        showingSelectWishlistSheet: $showingSelectWishlistSheet,
+                        selectableWishlist: selectableWishlist
+                    )
+                }
             }
         }
         // Apply sheets and theme to the container view (remains outside)
         .sheet(isPresented: $showingSelectWishlistSheet) {
            // Simple Wishlist Selection Sheet
            NavigationView { // Embed in NavView for title/button
-                List {
-                    ForEach(selectableWishlist) { book in
-                        Button {
-                            // Move selected book and dismiss
-                            moveToHangarFromWishlist(book)
-                            showingSelectWishlistSheet = false
-                        } label: {
-                            VStack(alignment: .leading) {
-                                Text(book.title).foregroundColor(.primary) // Ensure text is visible
-                                Text(book.author).font(.caption).foregroundColor(.secondary)
+                ZStack {
+                    // Add a starfield behind the list
+                    StarfieldView(starCount: 50)
+                    
+                    List {
+                        ForEach(selectableWishlist) { book in
+                            Button {
+                                // Move selected book and dismiss
+                                moveToHangarFromWishlist(book)
+                                showingSelectWishlistSheet = false
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(book.title).foregroundColor(.primary) // Ensure text is visible
+                                    Text(book.author).font(.caption).foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .listStyle(.plain)
                 }
                 .navigationTitle("Select from Wishlist")
                 .navigationBarItems(leading: Button("Cancel") { showingSelectWishlistSheet = false })
@@ -124,11 +145,11 @@ struct EmptyHangarView: View {
             Spacer()
             Image(systemName: "airplane.circle.fill") // Placeholder Icon
                 .font(.largeTitle)
-                .foregroundColor(.gray)
+                .foregroundColor(.cyan)
                 .padding(.bottom, 5)
             Text("Hangar is empty.")
                 .font(.headline)
-                .foregroundColor(.gray)
+                .foregroundColor(.white)
             Text("Add books currently being read from the Wishlist or Archives.")
                 .font(.subheadline)
                 .foregroundColor(.gray)
@@ -137,7 +158,7 @@ struct EmptyHangarView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .scrollContentBackground(.hidden)
+        .background(Color.clear) // Make background transparent
         .navigationTitle("In The Hangar")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -178,17 +199,21 @@ struct PopulatedHangarView: View {
                 )
             }
             .onMove(perform: sortOrder == .defaultOrder ? reorderHangar : nil)
+            // No onDelete handler - we only want to move books, not delete them
         }
         // Use a binding to the EditMode state
         .environment(\.editMode, $editMode)
         .disabled(editMode == .active && sortOrder != .defaultOrder)
-        .scrollContentBackground(.hidden)
+        .scrollContentBackground(.hidden) // Keep list background transparent
+        .listStyle(.plain) // Use plain style for better transparency
+        .background(Color.clear) // Make sure it's transparent
         .navigationTitle("In The Hangar")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 if sortOrder == .defaultOrder {
                     // Use the built-in EditButton which handles toggling edit mode properly
                     EditButton()
+                        .foregroundColor(.cyan) // Match theme
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -206,6 +231,7 @@ struct PopulatedHangarView: View {
                     }
                 } label: {
                     Label("Sort", systemImage: "arrow.up.arrow.down.circle")
+                        .foregroundColor(.cyan) // Match theme
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -213,6 +239,7 @@ struct PopulatedHangarView: View {
                     showingSelectWishlistSheet = true
                 } label: {
                     Label("Add Book", systemImage: "plus.circle.fill")
+                        .foregroundColor(.cyan) // Match theme
                 }
                 .disabled(selectableWishlist.isEmpty)
             }

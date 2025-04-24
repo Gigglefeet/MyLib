@@ -65,24 +65,35 @@ struct JediArchivesView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Add darker starfield background
+            .background(
+                StarfieldView(starCount: 80, twinkleAnimation: true, parallaxEnabled: true)
+                    .opacity(0.7) // Slightly dimmed for less distraction
+            )
         } else {
             // Show the list if not empty
-            List {
-                // Use the computed sortedArchives
-                ForEach(sortedArchives) { book in
-                    // Use the dedicated row view
-                    ArchiveBookRowView(
-                        book: book,
-                        setRatingAction: setRatingAction,
-                        markAsUnreadAction: markAsUnreadAction,
-                        moveToHangarAction: moveToHangarAction,
-                        bookToEdit: $bookToEdit // Pass the binding for sheet presentation
-                    )
+            ZStack {
+                // Add darker starfield background
+                StarfieldView(starCount: 80, twinkleAnimation: true, parallaxEnabled: true)
+                    .opacity(0.7) // Slightly dimmed for less distraction
+                
+                List {
+                    // Use the computed sortedArchives
+                    ForEach(sortedArchives) { book in
+                        // Use the dedicated row view
+                        ArchiveBookRowView(
+                            book: book,
+                            setRatingAction: setRatingAction,
+                            markAsUnreadAction: markAsUnreadAction,
+                            moveToHangarAction: moveToHangarAction,
+                            bookToEdit: $bookToEdit // Pass the binding for sheet presentation
+                        )
+                    }
+                    .onDelete(perform: deleteFromArchives) // Existing delete (swipe left / leading edge)
                 }
-                .onDelete(perform: deleteFromArchives) // Existing delete (swipe left / leading edge)
-            }
-             .environment(\.colorScheme, .dark) // Apply dark theme
-             .scrollContentBackground(.hidden) // Keep list background transparent for dark theme
+                 .environment(\.colorScheme, .dark) // Apply dark theme
+                 .scrollContentBackground(.hidden) // Keep list background transparent for dark theme
+             }
              .toolbar { // Custom centered title with background
                  ToolbarItem(placement: .principal) {
                      Text("Empire-Archives")
