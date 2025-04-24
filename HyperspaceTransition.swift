@@ -80,122 +80,183 @@ extension View {
         self.transition(.hyperspace.combined(with: .opacity).animation(.easeInOut(duration: 0.5)))
     }
     
-    // For use with NavigationView - simplified version that won't interfere with navigation
+    // For use with NavigationView - full cinematic hyperspace effect
     func navigationHyperspaceEffect() -> some View {
-        self.modifier(SafeHyperspaceModifier())
+        self.modifier(CinematicHyperspaceModifier())
     }
 }
 
-// A safer modifier that doesn't add UIViewControllerRepresentable which might interfere with navigation
-struct SafeHyperspaceModifier: ViewModifier {
-    @State private var isActive = false
-    
-    func body(content: Content) -> some View {
-        content
-            .onAppear {
-                // Short delay then animate in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    withAnimation(.easeInOut(duration: 0.4)) {
-                        isActive = true
-                    }
-                }
-            }
-            .modifier(HyperspaceFlashEffect(isActive: isActive))
-    }
-}
-
-// A simpler effect that adds a quick flash of streaks around the edges
-struct HyperspaceFlashEffect: ViewModifier {
-    let isActive: Bool
-    
-    @State private var flashOpacity: Double = 0
+// A more cinematic hyperspace effect that covers the whole screen
+struct CinematicHyperspaceModifier: ViewModifier {
+    @State private var showHyperspace = false
+    @State private var showDestination = false
     
     func body(content: Content) -> some View {
         ZStack {
-            content
+            // Only show actual destination content after hyperspace effect
+            if showDestination {
+                content
+                    .transition(.opacity)
+            }
             
-            // Only show effect briefly when appearing
-            if isActive {
-                GeometryReader { geometry in
-                    ZStack {
-                        // Edge flash
-                        VStack {
-                            HStack {
-                                ForEach(0..<15) { _ in
-                                    Rectangle()
-                                        .fill(Color.white.opacity(0.7))
-                                        .frame(width: CGFloat.random(in: 1...3), 
-                                               height: CGFloat.random(in: 30...100))
-                                        .blur(radius: 2)
-                                        .rotationEffect(.degrees(90))
-                                        .offset(y: -CGFloat.random(in: 0...20))
-                                }
-                            }
-                            .frame(width: geometry.size.width)
-                            
-                            Spacer()
-                            
-                            HStack {
-                                ForEach(0..<15) { _ in
-                                    Rectangle()
-                                        .fill(Color.white.opacity(0.7))
-                                        .frame(width: CGFloat.random(in: 1...3), 
-                                               height: CGFloat.random(in: 30...100))
-                                        .blur(radius: 2)
-                                        .rotationEffect(.degrees(90))
-                                        .offset(y: CGFloat.random(in: 0...20))
-                                }
-                            }
-                            .frame(width: geometry.size.width)
-                        }
-                        .frame(height: geometry.size.height)
-                        
-                        // Side flashes
-                        HStack {
-                            VStack {
-                                ForEach(0..<15) { _ in
-                                    Rectangle()
-                                        .fill(Color.white.opacity(0.7))
-                                        .frame(width: CGFloat.random(in: 1...3), 
-                                               height: CGFloat.random(in: 30...100))
-                                        .blur(radius: 2)
-                                        .offset(x: -CGFloat.random(in: 0...20))
-                                }
-                            }
-                            .frame(height: geometry.size.height)
-                            
-                            Spacer()
-                            
-                            VStack {
-                                ForEach(0..<15) { _ in
-                                    Rectangle()
-                                        .fill(Color.white.opacity(0.7))
-                                        .frame(width: CGFloat.random(in: 1...3), 
-                                               height: CGFloat.random(in: 30...100))
-                                        .blur(radius: 2)
-                                        .offset(x: CGFloat.random(in: 0...20))
-                                }
-                            }
-                            .frame(height: geometry.size.height)
-                        }
-                        .frame(width: geometry.size.width)
-                    }
-                    .opacity(flashOpacity)
-                }
-                .onAppear {
-                    withAnimation(.easeIn(duration: 0.1)) {
-                        flashOpacity = 1.0
-                    }
-                    
-                    // Automatically remove the effect
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            flashOpacity = 0
-                        }
-                    }
+            // Full-screen hyperspace effect
+            if showHyperspace {
+                HyperspaceAnimationView()
+                    .edgesIgnoringSafeArea(.all)
+                    .transition(.opacity)
+            }
+        }
+        .onAppear {
+            // Start hyperspace sequence
+            withAnimation(.easeIn(duration: 0.2)) {
+                showHyperspace = true
+            }
+            
+            // After 1 second, show the destination
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    showHyperspace = false
+                    showDestination = true
                 }
             }
         }
+    }
+}
+
+// Animated hyperspace view
+struct HyperspaceAnimationView: View {
+    @State private var animationProgress: Double = 0
+    
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            HyperspaceStarfield(progress: animationProgress)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.8)) {
+                animationProgress = 1.0
+            }
+        }
+    }
+}
+
+// Full-screen cinematic hyperspace view with real-time animation
+struct HyperspaceStarfield: View {
+    let progress: Double
+    @State private var stars: [HyperStar] = []
+    
+    // Random initial positions
+    private let starCount = 200
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Deep space background
+                Color.black
+                
+                // Central glow
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [.white, .white.opacity(0)]),
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 30 + 50 * progress
+                        )
+                    )
+                    .frame(width: 60 + 100 * progress)
+                    .opacity(max(0, 1 - progress))
+                    .blur(radius: 5)
+                
+                // Dynamic star streaks
+                ForEach(0..<stars.count, id: \.self) { index in
+                    if index < stars.count {
+                        let star = stars[index]
+                        StarStreakView(
+                            startPoint: star.startPoint,
+                            endPoint: calculateEndPoint(
+                                start: star.startPoint, 
+                                angle: star.angle, 
+                                progress: progress, 
+                                speed: star.speed,
+                                size: geometry.size
+                            ),
+                            width: star.width,
+                            color: star.color,
+                            progress: progress
+                        )
+                    }
+                }
+            }
+            .onAppear {
+                initializeStars(size: geometry.size)
+            }
+        }
+    }
+    
+    private func initializeStars(size: CGSize) {
+        stars = (0..<starCount).map { _ in
+            let angleRad = CGFloat.random(in: 0..<2*CGFloat.pi)
+            let startRadius = CGFloat.random(in: 0...20)
+            let startPoint = CGPoint(
+                x: size.width/2 + cos(angleRad) * startRadius,
+                y: size.height/2 + sin(angleRad) * startRadius
+            )
+            
+            return HyperStar(
+                startPoint: startPoint,
+                angle: angleRad,
+                width: CGFloat.random(in: 1...3),
+                speed: CGFloat.random(in: 0.7...1.5),
+                color: starColor()
+            )
+        }
+    }
+    
+    private func calculateEndPoint(start: CGPoint, angle: CGFloat, progress: Double, speed: CGFloat, size: CGSize) -> CGPoint {
+        let maxDistance = max(size.width, size.height) * 1.5
+        let distance = maxDistance * progress * speed
+        
+        return CGPoint(
+            x: start.x + cos(angle) * distance,
+            y: start.y + sin(angle) * distance
+        )
+    }
+    
+    private func starColor() -> Color {
+        let colors: [Color] = [
+            .white, .white, .white, 
+            .blue.opacity(0.9),
+            .cyan.opacity(0.8)
+        ]
+        return colors.randomElement()!
+    }
+}
+
+// Data structure for a hyperspace star
+struct HyperStar {
+    let startPoint: CGPoint
+    let angle: CGFloat
+    let width: CGFloat
+    let speed: CGFloat
+    let color: Color
+}
+
+// Individual animated star streak view
+struct StarStreakView: View {
+    let startPoint: CGPoint
+    let endPoint: CGPoint
+    let width: CGFloat
+    let color: Color
+    let progress: Double
+    
+    var body: some View {
+        Path { path in
+            path.move(to: startPoint)
+            path.addLine(to: endPoint)
+        }
+        .stroke(color, lineWidth: width)
+        .blur(radius: width * 0.5)
+        .opacity(min(1, max(0.2, progress * 2)))
     }
 }
 
