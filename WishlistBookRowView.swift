@@ -42,6 +42,20 @@ struct WishlistBookRowView: View {
             self.bookToEdit = book
         }
         .listRowBackground(Color.clear)
+        // Add context menu for actions (available on long press)
+        .contextMenu {
+            Button(action: {
+                markAsReadAction(book)
+            }) {
+                Label("Mark Read", image: "empire_logo")
+            }
+            
+            Button(action: {
+                moveToHangarAction(book)
+            }) {
+                Label("Start Reading", systemImage: "airplane.circle.fill")
+            }
+        }
         .swipeActions(edge: .leading, allowsFullSwipe: false) { // Mark Read swipe (Keep on leading)
             Button { markAsReadAction(book) } label: {
                 // Using custom Label approach since SF Symbols doesn't have empire logo

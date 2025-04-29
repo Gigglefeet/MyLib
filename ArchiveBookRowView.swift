@@ -53,6 +53,20 @@ struct ArchiveBookRowView: View {
             self.bookToEdit = book
         }
         .listRowBackground(Color.clear) // Keep row transparent
+        // Add context menu for actions (available on long press)
+        .contextMenu {
+            Button(action: {
+                moveToHangarAction(book)
+            }) {
+                Label("Read Again", systemImage: "airplane.circle.fill")
+            }
+            
+            Button(action: {
+                markAsUnreadAction(book)
+            }) {
+                Label("Move to Wishlist", image: "rebel_logo")
+            }
+        }
         // Swipe Action: Move to Hangar - Leading Edge (Swipe Right)
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
              Button {
