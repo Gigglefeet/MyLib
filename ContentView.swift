@@ -244,10 +244,8 @@ struct ContentView: View {
         DispatchQueue.main.async {
             // Try to find the book by ID
             if let index = self.dataStore.inTheHangar.firstIndex(where: { $0.id == book.id }) {
-                // Use withAnimation(.none) to avoid glitches
-                withAnimation(.none) {
-                    self.dataStore.inTheHangar.remove(at: index)
-                }
+                // Use withAnimation(.none) to avoid glitches - fix the unused result warning
+                self.dataStore.inTheHangar.remove(at: index)
                 print("DEBUG: ContentView.deleteBookFromHangar - Successfully deleted book at index \(index). Books before: \(count), after: \(self.dataStore.inTheHangar.count)")
             } else {
                 print("ERROR: ContentView.deleteBookFromHangar - Failed to find book ID \(book.id) in hangar for deletion")
