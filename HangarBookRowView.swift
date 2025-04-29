@@ -1,12 +1,19 @@
 import SwiftUI
 
+// MARK: - Row View Definition
 struct HangarBookRowView: View {
     // Data & Actions
     let book: Book
     var moveFromHangarToArchives: (Book) -> Void
     var moveFromHangarToWishlist: (Book) -> Void
     var setHangarRating: (Book, Int) -> Void
+    var deleteAction: ((Book) -> Void)? // Optional delete action
     @Binding var bookToEdit: Book? // For tapping to edit
+    // Edit mode state
+    var isEditMode: Bool = false
+    
+    // State for delete confirmation
+    @State private var showingDeleteAlert = false
 
     var body: some View {
         HStack { // Main row content
@@ -26,6 +33,18 @@ struct HangarBookRowView: View {
             }
 
             Spacer() // Push rating stars to the right
+            
+            // Only show delete button when in edit mode
+            if isEditMode && deleteAction != nil {
+                Button(action: {
+                    showingDeleteAlert = true
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(BorderlessButtonStyle())
+                .padding(.trailing, 8)
+            }
 
             // Interactive Lightsaber Ratings (replacing stars)
             HStack(spacing: 2) { // Reduced spacing for tighter lightsabers
@@ -51,42 +70,45 @@ struct HangarBookRowView: View {
             self.bookToEdit = book
         }
         .listRowBackground(Color.clear) // Keep background transparent
-        // Swipe Action: Mark Finished (Move to Archives) - Leading Edge (Swipe Right)
-        .swipeActions(edge: .leading, allowsFullSwipe: true) { // Allow full swipe
-            Button {
+        // Context menu for all actions (available on long press)
+        .contextMenu {
+            Button(action: {
                 moveFromHangarToArchives(book)
-            } label: {
-                // Using custom Label approach since SF Symbols doesn't have empire logo
-                HStack {
-                    Image("empire_logo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
-                    Text("Mark Finished")
-                }
+            }) {
+                Label("Mark Finished", image: "empire_logo")
             }
-            .tint(.green)
-        }
-        // Replace delete with Move to Wishlist action
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button {
+            
+            Button(action: {
                 moveFromHangarToWishlist(book)
-            } label: {
-                // Using custom Label approach since SF Symbols doesn't have rebel logo
-                HStack {
-                    Image("rebel_logo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
-                    Text("Move to Wishlist")
+            }) {
+                Label("Move to Wishlist", image: "rebel_logo")
+            }
+            
+            if deleteAction != nil {
+                Divider()
+                Button(role: .destructive, action: {
+                    showingDeleteAlert = true
+                }) {
+                    Label("Delete", systemImage: "trash")
                 }
             }
-            .tint(.orange) // Match the color used in other views for wishlist actions
+        }
+        // Use regular alert for deletion confirmation
+        .alert("Delete Book", isPresented: $showingDeleteAlert) {
+            Button("Delete", role: .destructive) {
+                print("DEBUG: HangarBookRowView - Delete confirmed for book: \(book.title)")
+                if let action = deleteAction {
+                    action(book)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete '\(book.title)'?")
         }
     }
 }
 
-// Preview for HangarBookRowView
+// MARK: - Preview
 #Preview {
     struct HangarRowPreviewWrapper: View {
         @State var sampleBook = Book(title: "Row Preview Book", author: "Row Author", notes: "Preview notes...", rating: 3)
@@ -107,23 +129,32 @@ struct HangarBookRowView: View {
             sampleBook.rating = validatedRating
              print("PREVIEW ROW: Set rating for '\(book.title)' to \(validatedRating)")
         }
+        
+        func previewDeleteBook(book: Book) {
+            print("PREVIEW ROW: Delete '\(book.title)'")
+        }
 
         var body: some View {
             List {
+                 // Standard mode
                  HangarBookRowView(
                     book: sampleBook,
                     moveFromHangarToArchives: previewMoveToArchives,
                     moveFromHangarToWishlist: previewMoveToWishlist,
                     setHangarRating: previewSetRating,
-                    bookToEdit: $editingBook
+                    deleteAction: previewDeleteBook,
+                    bookToEdit: $editingBook,
+                    isEditMode: false
                 )
-                 // Add another book for context
+                 // Edit mode
                  HangarBookRowView(
-                    book: Book(title: "Another Book", author: "Someone Else", rating: 0),
+                    book: Book(title: "Edit Mode Book", author: "Someone Else", notes: "In edit mode", rating: 2),
                     moveFromHangarToArchives: previewMoveToArchives,
                     moveFromHangarToWishlist: previewMoveToWishlist,
                     setHangarRating: previewSetRating,
-                    bookToEdit: $editingBook
+                    deleteAction: previewDeleteBook,
+                    bookToEdit: $editingBook,
+                    isEditMode: true
                 )
             }
             .environment(\.colorScheme, .dark)

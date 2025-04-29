@@ -73,6 +73,8 @@ struct ContentView: View {
                          reorderHangar: reorderHangar,
                          moveToHangarFromWishlist: moveToHangarFromWishlist,
                          moveFromHangarToWishlist: moveFromHangarToWishlist,
+                         deleteFromHangar: deleteFromHangar,
+                         deleteBookFromHangar: deleteBookFromHangar,
                          wishlist: $dataStore.holocronWishlist
                      )
                      .navigationHyperspaceEffect() // Apply our custom transition effect
@@ -218,6 +220,46 @@ struct ContentView: View {
             dataStore.holocronWishlist.append(bookToMove)
         } else {
             print("ERROR moveFromHangarToWishlist: Book not found in hangar.")
+        }
+    }
+
+    // Function to delete books from the hangar
+    func deleteFromHangar(at offsets: IndexSet) {
+        print("DEBUG: ContentView.deleteFromHangar - Deleting at offsets: \(offsets)")
+        let count = dataStore.inTheHangar.count
+        
+        // Ensure we're on the main thread
+        DispatchQueue.main.async {
+            dataStore.inTheHangar.remove(atOffsets: offsets)
+            print("DEBUG: ContentView.deleteFromHangar - Deletion completed. Books before: \(count), after: \(dataStore.inTheHangar.count)")
+        }
+    }
+    
+    // Additional function to delete a book by ID
+    func deleteBookFromHangar(book: Book) {
+        print("DEBUG: ContentView.deleteBookFromHangar - Attempting to delete book \(book.title) with ID \(book.id)")
+        let count = dataStore.inTheHangar.count
+        
+        // Ensure all UI operations happen on the main thread
+        DispatchQueue.main.async {
+            // Try to find the book by ID
+            if let index = self.dataStore.inTheHangar.firstIndex(where: { $0.id == book.id }) {
+                // Use withAnimation(.none) to avoid glitches
+                withAnimation(.none) {
+                    self.dataStore.inTheHangar.remove(at: index)
+                }
+                print("DEBUG: ContentView.deleteBookFromHangar - Successfully deleted book at index \(index). Books before: \(count), after: \(self.dataStore.inTheHangar.count)")
+            } else {
+                print("ERROR: ContentView.deleteBookFromHangar - Failed to find book ID \(book.id) in hangar for deletion")
+                
+                // Fallback solution if index can't be found - try to remove by finding a matching book
+                let matchingBooks = self.dataStore.inTheHangar.filter { $0.id == book.id }
+                if !matchingBooks.isEmpty {
+                    print("DEBUG: ContentView.deleteBookFromHangar - Attempting alternative deletion method")
+                    self.dataStore.inTheHangar.removeAll(where: { $0.id == book.id })
+                    print("DEBUG: ContentView.deleteBookFromHangar - Alternative deletion completed. Books after: \(self.dataStore.inTheHangar.count)")
+                }
+            }
         }
     }
 }

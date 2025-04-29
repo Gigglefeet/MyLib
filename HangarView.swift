@@ -8,6 +8,8 @@ struct HangarView: View {
     var reorderHangar: (IndexSet, Int) -> Void
     var moveToHangarFromWishlist: (Book) -> Void // Action to move book *to* hangar
     var moveFromHangarToWishlist: (Book) -> Void // New action to move book back to wishlist
+    var deleteFromHangar: (IndexSet) -> Void // Function to delete books
+    var deleteBookFromHangar: (Book) -> Void // New function to delete by book ID
 
     // Binding for wishlist selection modal
     @Binding var wishlist: [Book] // Need the wishlist to show in the modal
@@ -79,9 +81,12 @@ struct HangarView: View {
                     
                     PopulatedHangarView(
                         sortedHangar: sortedHangar,
+                        originalHangarData: $inTheHangar,
                         moveFromHangarToArchives: moveFromHangarToArchives,
                         moveFromHangarToWishlist: moveFromHangarToWishlist,
                         setHangarRating: setHangarRating,
+                        deleteFromHangar: deleteFromHangar,
+                        deleteBookFromHangar: deleteBookFromHangar,
                         bookToEdit: $bookToEdit,
                         sortOrder: $sortOrder,
                         reorderHangar: reorderHangar,
@@ -175,9 +180,13 @@ struct EmptyHangarView: View {
 
 struct PopulatedHangarView: View {
     let sortedHangar: [Book]
+    // Add binding to the original unsorted array
+    @Binding var originalHangarData: [Book]
     var moveFromHangarToArchives: (Book) -> Void
     var moveFromHangarToWishlist: (Book) -> Void
     var setHangarRating: (Book, Int) -> Void
+    var deleteFromHangar: (IndexSet) -> Void // Add delete function
+    var deleteBookFromHangar: (Book) -> Void // New function to delete by ID
     @Binding var bookToEdit: Book?
     @Binding var sortOrder: HangarSortOrder
     var reorderHangar: (IndexSet, Int) -> Void
@@ -187,6 +196,66 @@ struct PopulatedHangarView: View {
     // Proper SwiftUI way to handle edit mode
     @State private var editMode: EditMode = .inactive
     
+    // Add state to force view refresh
+    @State private var refreshID = UUID()
+    
+    // Wrapper to handle book deletion with refresh
+    private func handleBookDeletion(book: Book) {
+        // Call the actual deletion function
+        deleteBookFromHangar(book)
+        
+        // Force a refresh of the view after deletion
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            refreshID = UUID()
+            
+            // Exit edit mode after deletion
+            if editMode == .active {
+                editMode = .inactive
+            }
+        }
+    }
+    
+    // Add a mapping function to handle sorted deletion
+    private func handleSortedDeletion(offsets: IndexSet) {
+        // When list is sorted, we need to map the visual indexes to actual data indexes
+        if sortOrder != .defaultOrder {
+            // Map the sorted indices to actual Book objects
+            let sortedBooks = sortedHangar
+            let toDelete = offsets.map { sortedBooks[$0] }
+            
+            // Since we're using ForEach with unique IDs, we can map based on object identity
+            let originalBooks = originalHangarData // Access the unsorted original data
+            
+            // Find the original indices in the data source by ID
+            var originalIndices = IndexSet()
+            for bookToDelete in toDelete {
+                if let index = originalBooks.firstIndex(where: { $0.id == bookToDelete.id }) {
+                    originalIndices.insert(index)
+                }
+            }
+            
+            print("DEBUG: Mapped sorted indices \(offsets) to original indices \(originalIndices)")
+            withAnimation(.none) {
+                deleteFromHangar(originalIndices)
+            }
+        } else {
+            // No sorting, just use the indices directly
+            withAnimation(.none) {
+                deleteFromHangar(offsets)
+            }
+        }
+        
+        // Force a refresh of the view after deletion
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            refreshID = UUID()
+            
+            // Exit edit mode after deletion to prevent UI refresh issues
+            if editMode == .active {
+                editMode = .inactive
+            }
+        }
+    }
+    
     var body: some View {
         List {
             ForEach(sortedHangar) { book in
@@ -195,11 +264,13 @@ struct PopulatedHangarView: View {
                     moveFromHangarToArchives: moveFromHangarToArchives,
                     moveFromHangarToWishlist: moveFromHangarToWishlist,
                     setHangarRating: setHangarRating,
-                    bookToEdit: $bookToEdit
+                    deleteAction: handleBookDeletion, // Use our wrapper function
+                    bookToEdit: $bookToEdit,
+                    isEditMode: editMode == .active
                 )
             }
             .onMove(perform: sortOrder == .defaultOrder ? reorderHangar : nil)
-            // No onDelete handler - we only want to move books, not delete them
+            .onDelete(perform: handleSortedDeletion) // Map the indices if needed
         }
         // Use a binding to the EditMode state
         .environment(\.editMode, $editMode)
@@ -207,13 +278,30 @@ struct PopulatedHangarView: View {
         .scrollContentBackground(.hidden) // Keep list background transparent
         .listStyle(.plain) // Use plain style for better transparency
         .background(Color.clear) // Make sure it's transparent
+        .id(refreshID) // Force the list to re-render when the refreshID changes
+        // Add explicit modifier for edit actions
+        .toolbar {
+            ToolbarItemGroup(placement: .bottomBar) {
+                if editMode == .active {
+                    Spacer()
+                    Text("Tap delete buttons or use context menu to remove books")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+            }
+        }
         .navigationTitle("In The Hangar")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 if sortOrder == .defaultOrder {
-                    // Use the built-in EditButton which handles toggling edit mode properly
-                    EditButton()
-                        .foregroundColor(.cyan) // Match theme
+                    // Custom button to toggle edit mode
+                    Button(editMode == .active ? "Done" : "Edit") {
+                        withAnimation {
+                            editMode = editMode == .active ? .inactive : .active
+                        }
+                    }
+                    .foregroundColor(.cyan) // Match theme
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -252,9 +340,9 @@ struct PopulatedHangarView: View {
     // Need a wrapper view to manage state for the preview
     struct HangarPreviewWrapper: View {
         @State private var previewHangar: [Book] = [
-            Book(title: "Hangar Book 1", author: "Author H1", rating: 4),
-            Book(title: "Hangar Book 2", author: "Author H2", rating: 0),
-            Book(title: "Hangar Book 3", author: "Author H3", rating: 5, notes: "Long note preview...")
+            Book(title: "Hangar Book 1", author: "Author H1", notes: "", rating: 4),
+            Book(title: "Hangar Book 2", author: "Author H2", notes: "", rating: 0),
+            Book(title: "Hangar Book 3", author: "Author H3", notes: "Long note preview...", rating: 5)
         ]
         @State private var previewWishlist: [Book] = [
              Book(title: "Wishlist Book 1", author: "Author W1"),
@@ -299,6 +387,18 @@ struct PopulatedHangarView: View {
             }
         }
 
+        func previewDeleteFromHangar(at offsets: IndexSet) {
+            previewHangar.remove(atOffsets: offsets)
+            print("PREVIEW: Deleted book(s) from Hangar")
+        }
+        
+        func previewDeleteBookFromHangar(book: Book) {
+            if let index = previewHangar.firstIndex(where: { $0.id == book.id }) {
+                previewHangar.remove(at: index)
+                print("PREVIEW: Deleted book '\(book.title)' from Hangar")
+            }
+        }
+
         var body: some View {
             NavigationView {
                 HangarView(
@@ -308,6 +408,8 @@ struct PopulatedHangarView: View {
                     reorderHangar: previewReorder,
                     moveToHangarFromWishlist: previewMoveToHangar,
                     moveFromHangarToWishlist: previewMoveToWishlist,
+                    deleteFromHangar: previewDeleteFromHangar,
+                    deleteBookFromHangar: previewDeleteBookFromHangar,
                     wishlist: $previewWishlist
                 )
             }
