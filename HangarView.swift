@@ -207,11 +207,6 @@ struct PopulatedHangarView: View {
         // Force a refresh of the view after deletion
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             refreshID = UUID()
-            
-            // Exit edit mode after deletion
-            if editMode == .active {
-                editMode = .inactive
-            }
         }
     }
     
@@ -248,11 +243,6 @@ struct PopulatedHangarView: View {
         // Force a refresh of the view after deletion
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             refreshID = UUID()
-            
-            // Exit edit mode after deletion to prevent UI refresh issues
-            if editMode == .active {
-                editMode = .inactive
-            }
         }
     }
     
@@ -266,55 +256,26 @@ struct PopulatedHangarView: View {
                     setHangarRating: setHangarRating,
                     deleteAction: handleBookDeletion, // Use our wrapper function
                     bookToEdit: $bookToEdit,
-                    isEditMode: editMode == .active
+                    isEditMode: false // Always use normal mode since we removed the edit button
                 )
             }
             .onMove(perform: sortOrder == .defaultOrder ? reorderHangar : nil)
             .onDelete(perform: handleSortedDeletion) // Map the indices if needed
         }
-        // Use a binding to the EditMode state
+        // Use a binding to the EditMode state but we'll never activate it
         .environment(\.editMode, $editMode)
-        .disabled(editMode == .active && sortOrder != .defaultOrder)
         .scrollContentBackground(.hidden) // Keep list background transparent
         .listStyle(.plain) // Use plain style for better transparency
         .background(Color.clear) // Make sure it's transparent
         .id(refreshID) // Force the list to re-render when the refreshID changes
-        // Add explicit modifier for edit actions
-        .toolbar {
-            ToolbarItemGroup(placement: .bottomBar) {
-                if editMode == .active {
-                    Spacer()
-                    Text("Tap delete buttons or use context menu to remove books")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Spacer()
-                }
-            }
-        }
+        // Remove the bottom toolbar since there's no edit mode
         .navigationTitle("In The Hangar")
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                if sortOrder == .defaultOrder {
-                    // Custom button to toggle edit mode
-                    Button(editMode == .active ? "Done" : "Edit") {
-                        withAnimation {
-                            editMode = editMode == .active ? .inactive : .active
-                        }
-                    }
-                    .foregroundColor(.cyan) // Match theme
-                }
-            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Picker("Sort Order", selection: $sortOrder) {
                         ForEach(HangarSortOrder.allCases) { order in
                             Text(order.rawValue).tag(order)
-                        }
-                    }
-                    // Add this to handle edit mode automatically
-                    .onChange(of: sortOrder) { _, newValue in
-                        if newValue != .defaultOrder && editMode == .active {
-                            editMode = .inactive
                         }
                     }
                 } label: {

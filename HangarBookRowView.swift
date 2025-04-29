@@ -34,18 +34,6 @@ struct HangarBookRowView: View {
 
             Spacer() // Push rating stars to the right
             
-            // Only show delete button when in edit mode
-            if isEditMode && deleteAction != nil {
-                Button(action: {
-                    showingDeleteAlert = true
-                }) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
-                }
-                .buttonStyle(BorderlessButtonStyle())
-                .padding(.trailing, 8)
-            }
-
             // Interactive Lightsaber Ratings (replacing stars)
             HStack(spacing: 2) { // Reduced spacing for tighter lightsabers
                 ForEach(1...5, id: \.self) { starIndex in
