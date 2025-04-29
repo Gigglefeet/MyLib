@@ -7,6 +7,8 @@ struct JediArchivesView: View {
     // Action to move book back to wishlist (passed from ContentView)
     var markAsUnreadAction: (Book) -> Void
     var moveToHangarAction: (Book) -> Void
+    let reorderArchives: (IndexSet, Int) -> Void
+    let deleteAction: (IndexSet) -> Void
     
     // AppStorage for persistent sort order
     @AppStorage("archivesSortOrder") private var sortOrder: ArchivesSortOrder = .defaultOrder
@@ -89,7 +91,8 @@ struct JediArchivesView: View {
                             bookToEdit: $bookToEdit // Pass the binding for sheet presentation
                         )
                     }
-                    .onDelete(perform: deleteFromArchives) // Existing delete (swipe left / leading edge)
+                    .onMove(perform: reorderArchives)
+                    .onDelete(perform: deleteAction)
                 }
                  .environment(\.colorScheme, .dark) // Apply dark theme
                  .scrollContentBackground(.hidden) // Keep list background transparent for dark theme
@@ -147,7 +150,7 @@ struct JediArchivesView: View {
          @State var previewList = [
             Book(title: "B Book Archive", author: "Author C", rating: 3),
             Book(title: "A Book Archive", author: "Author D", rating: 5),
-            Book(title: "C Book Archive", author: "Author E", rating: 1, notes: "Archived notes")
+            Book(title: "C Book Archive", author: "Author E", notes: "Archived notes", rating: 1)
         ]
 
         func previewSetRating(book: Book, newRating: Int) {
@@ -164,6 +167,11 @@ struct JediArchivesView: View {
             previewList.removeAll(where: { $0.id == book.id })
             print("PREVIEW: Moved '\(book.title)' to Hangar (Simulated)")
          }
+         
+         func previewDeleteArchives(at offsets: IndexSet) {
+            previewList.remove(atOffsets: offsets)
+            print("PREVIEW: Deleted books at offsets \(offsets)")
+         }
 
         var body: some View {
             NavigationView {
@@ -172,7 +180,9 @@ struct JediArchivesView: View {
                     jediArchives: $previewList, 
                     setRatingAction: previewSetRating,
                     markAsUnreadAction: previewMarkUnread,
-                    moveToHangarAction: previewMoveToHangar
+                    moveToHangarAction: previewMoveToHangar,
+                    reorderArchives: { _, _ in },
+                    deleteAction: previewDeleteArchives
                 )
                  .environment(\.colorScheme, .dark)
             }

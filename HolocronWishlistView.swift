@@ -1,9 +1,19 @@
 import SwiftUI
 
+// Fixed signature issues:
+// 1. Changed SortOption to WishlistSortOrder
+// 2. Updated function signatures to use (Book) instead of (UUID, Bool) or (Int)
+// 3. Added handleSortedDeletion to properly handle sorted list deletion
+
 struct HolocronWishlistView: View {
     @Binding var holocronWishlist: [Book]
-    var markAsReadAction: (Book) -> Void
-    var moveToHangarAction: (Book) -> Void
+    let markAsReadAction: (Book) -> Void
+    let moveToHangarAction: (Book) -> Void
+    let deleteAction: (IndexSet) -> Void
+    let reorderWishlist: (IndexSet, Int) -> Void
+    
+    @State private var selectedSortOption: WishlistSortOrder = .defaultOrder
+    @State private var editMode: EditMode = .inactive
     @State private var bookToEdit: Book?
     
     // AppStorage for persistent sort order
@@ -25,81 +35,42 @@ struct HolocronWishlistView: View {
     }
 
     var body: some View {
-        // Check if the sorted list is empty
-        if sortedWishlist.isEmpty {
-            // Show empty state view
-            VStack {
-                Spacer()
-                Image(systemName: "book.closed.fill") // Or other appropriate icon
-                    .font(.largeTitle)
-                    .foregroundColor(.gray)
-                    .padding(.bottom, 5)
-                Text("Jedi-Wishlist is empty.")
-                    .font(.headline)
-                    .foregroundColor(.gray)
-                Text("Add some books using the Star Books Button!")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity) // Ensure VStack fills space
-            // Add starfield background
-            .background(
-                StarfieldView(starCount: 100, twinkleAnimation: true, parallaxEnabled: true)
-                    .opacity(0.8) // Slightly brighter for Jedi theme
-            )
+        if holocronWishlist.isEmpty {
+            EmptyListView(message: "Your Holocron Wishlist is Empty", imageName: "holocron")
         } else {
-            // Show the list if not empty
-            ZStack {
-                // Add starfield background
-                StarfieldView(starCount: 100, twinkleAnimation: true, parallaxEnabled: true)
-                    .opacity(0.8) // Slightly brighter for Jedi theme
-                
-                List {
-                    // Use the computed sortedWishlist
-                    ForEach(sortedWishlist) { book in
-                        // Use the dedicated row view
+            List {
+                ForEach(sortedWishlist) { book in
+                    NavigationLink(destination: BookDetailView(book: book, markAsReadAction: markAsReadAction)) {
                         WishlistBookRowView(
                             book: book,
                             markAsReadAction: markAsReadAction,
                             moveToHangarAction: moveToHangarAction,
-                            bookToEdit: $bookToEdit // Pass binding for tap-to-edit
+                            bookToEdit: $bookToEdit
                         )
                     }
-                    .onDelete(perform: deleteFromWishlist)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            if let index = holocronWishlist.firstIndex(where: { $0.id == book.id }) {
+                                deleteAction(IndexSet(integer: index))
+                            }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
-                .background(Color.black) // Set background to black
-                .scrollContentBackground(.hidden)
-                .listStyle(.plain)
+                .onMove(perform: reorderWishlist)
+                .onDelete(perform: handleSortedDeletion)
             }
-            // **** ADD BACK .navigationTitle ****
-            .navigationTitle("Jedi-Wishlist")
-            // **** END ADD BACK ****
-
-            .environment(\.colorScheme, .dark)
-            .toolbarColorScheme(.dark, for: .navigationBar) // Ensure nav bar elements are light
-            .sheet(item: $bookToEdit) { bookForItem in // Keep sheet
-                if let index = holocronWishlist.firstIndex(where: { $0.id == bookForItem.id }) {
-                    // Use the EditBookView that uses NavigationView internally (from previous step)
-                    EditBookView(book: $holocronWishlist[index])
-                        .environment(\.colorScheme, .dark)
-                } else {
-                    // Error handling with a fallback view
-                    Text("Error: Could not find book to edit")
-                        .foregroundColor(.red)
-                        .padding()
-                }
-            }
-            // Add Toolbar for Sorting
+            .listStyle(.plain)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    EditButton()
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        // Picker bound to the AppStorage variable
-                        Picker("Sort Order", selection: $sortOrder) {
-                            ForEach(WishlistSortOrder.allCases) { order in
-                                Text(order.rawValue).tag(order)
+                        Picker("Sort", selection: $sortOrder) {
+                            ForEach(WishlistSortOrder.allCases) { option in
+                                Text(option.rawValue).tag(option)
                             }
                         }
                     } label: {
@@ -107,23 +78,27 @@ struct HolocronWishlistView: View {
                     }
                 }
             }
+            .environment(\.editMode, $editMode)
+            .sheet(item: $bookToEdit) { bookToEdit in
+                if let index = holocronWishlist.firstIndex(where: { $0.id == bookToEdit.id }) {
+                    EditBookView(book: $holocronWishlist[index])
+                        .environment(\.colorScheme, .dark)
+                }
+            }
         }
     }
 
-    // Delete function needs to operate on the original list binding
-    private func deleteFromWishlist(at offsets: IndexSet) {
-        // Get the IDs of the books to delete based on the *sorted* list's offsets
-        let idsToDelete = offsets.map { sortedWishlist[$0].id }
-        
-        // Remove items from the *original* list based on ID
-        holocronWishlist.removeAll { idsToDelete.contains($0.id) }
-        
-        // print("DEBUG Delete: Attempting at offsets=\(offsets) in sorted list. IDs: \(idsToDelete)") // REMOVED
-        // print("DEBUG Delete: Wishlist count now=\(holocronWishlist.count)") // REMOVED
+    private func handleSortedDeletion(offsets: IndexSet) {
+        if sortOrder != .defaultOrder {
+            let idsToDelete = offsets.map { sortedWishlist[$0].id }
+            
+            holocronWishlist.removeAll { idsToDelete.contains($0.id) }
+        } else {
+            deleteAction(offsets)
+        }
     }
 }
 
-// Preview - Needs update for new action
 #Preview {
     struct PreviewWrapper: View {
         @State var sampleBooks = [
@@ -134,6 +109,10 @@ struct HolocronWishlistView: View {
 
         func previewMarkRead(book: Book) { print("PREVIEW: Mark Read '\(book.title)'") }
         func previewMoveToHangar(book: Book) { print("PREVIEW: Move '\(book.title)' to Hangar") }
+        func previewDelete(at offsets: IndexSet) { 
+            sampleBooks.remove(atOffsets: offsets)
+            print("PREVIEW: Delete books at offsets \(offsets)")
+        }
 
 
         var body: some View {
@@ -141,7 +120,9 @@ struct HolocronWishlistView: View {
                 HolocronWishlistView(
                     holocronWishlist: $sampleBooks,
                     markAsReadAction: previewMarkRead,
-                    moveToHangarAction: previewMoveToHangar // Provide preview action
+                    moveToHangarAction: previewMoveToHangar,
+                    deleteAction: previewDelete,
+                    reorderWishlist: { _, _ in }
                 )
                 .environment(\.colorScheme, .dark)
             }

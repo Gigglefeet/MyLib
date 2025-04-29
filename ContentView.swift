@@ -21,7 +21,9 @@ struct ContentView: View {
                          HolocronWishlistView(
                              holocronWishlist: $dataStore.holocronWishlist, // Use DataStore
                              markAsReadAction: markAsRead,
-                             moveToHangarAction: moveToHangarFromWishlist // Pass new action
+                             moveToHangarAction: moveToHangarFromWishlist, // Pass new action
+                             deleteAction: deleteFromWishlist, // Pass delete function
+                             reorderWishlist: reorderWishlist // Pass reordering function
                          )
                          .navigationHyperspaceEffect() // Apply our custom transition effect
                     } label: { // Rebel Logo + Text Label
@@ -43,7 +45,9 @@ struct ContentView: View {
                             jediArchives: $dataStore.jediArchives, // Use DataStore
                             setRatingAction: setRating,
                             markAsUnreadAction: markAsUnread, // Keep existing action
-                            moveToHangarAction: moveToHangarFromArchives // Pass new action
+                            moveToHangarAction: moveToHangarFromArchives, // Pass new action
+                            reorderArchives: reorderArchives, // Pass reordering function
+                            deleteAction: deleteFromArchives // Pass delete function
                         )
                         .navigationHyperspaceEffect() // Apply our custom transition effect
                     } label: { // Empire Logo + Text Label
@@ -258,6 +262,40 @@ struct ContentView: View {
                     print("DEBUG: ContentView.deleteBookFromHangar - Alternative deletion completed. Books after: \(self.dataStore.inTheHangar.count)")
                 }
             }
+        }
+    }
+
+    // Function for reordering the Wishlist
+    func reorderWishlist(from source: IndexSet, to destination: Int) {
+        dataStore.holocronWishlist.move(fromOffsets: source, toOffset: destination)
+    }
+    
+    // Function for reordering the Archives
+    func reorderArchives(from source: IndexSet, to destination: Int) {
+        dataStore.jediArchives.move(fromOffsets: source, toOffset: destination)
+    }
+
+    // Function to delete books from the wishlist
+    func deleteFromWishlist(at offsets: IndexSet) {
+        print("DEBUG: ContentView.deleteFromWishlist - Deleting at offsets: \(offsets)")
+        let count = dataStore.holocronWishlist.count
+        
+        // Ensure we're on the main thread
+        DispatchQueue.main.async {
+            dataStore.holocronWishlist.remove(atOffsets: offsets)
+            print("DEBUG: ContentView.deleteFromWishlist - Deletion completed. Books before: \(count), after: \(dataStore.holocronWishlist.count)")
+        }
+    }
+
+    // Function to delete books from the archives
+    func deleteFromArchives(at offsets: IndexSet) {
+        print("DEBUG: ContentView.deleteFromArchives - Deleting at offsets: \(offsets)")
+        let count = dataStore.jediArchives.count
+        
+        // Ensure we're on the main thread
+        DispatchQueue.main.async {
+            dataStore.jediArchives.remove(atOffsets: offsets)
+            print("DEBUG: ContentView.deleteFromArchives - Deletion completed. Books before: \(count), after: \(dataStore.jediArchives.count)")
         }
     }
 }
